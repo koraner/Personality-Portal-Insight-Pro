@@ -6,25 +6,25 @@
     <title>Personality Portal - 保險業務潛能評測系統</title>
     
     <!-- 1. Tailwind CSS -->
-    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- 2. React & ReactDOM -->
     <script type="importmap">
     {
       "imports": {
-        "react": "[https://esm.sh/react@18.2.0](https://esm.sh/react@18.2.0)",
-        "react-dom/client": "[https://esm.sh/react-dom@18.2.0/client](https://esm.sh/react-dom@18.2.0/client)",
-        "lucide-react": "[https://esm.sh/lucide-react@0.294.0](https://esm.sh/lucide-react@0.294.0)"
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.294.0"
       }
     }
     </script>
 
     <!-- 3. Babel Standalone -->
-    <script src="[https://unpkg.com/@babel/standalone/babel.min.js](https://unpkg.com/@babel/standalone/babel.min.js)"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- 自定義樣式 -->
     <style>
-        @import url('[https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap](https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap)');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
         
         body {
             font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif;
@@ -256,33 +256,6 @@
             { id: 10,dim: "O", rev: true,  text: "我認為自己是：傳統、缺乏創造力的人" }
         ];
 
-        const HOLLAND_ACTIVITIES = [
-            { type: "R", text: "修理電器或機械" }, { type: "R", text: "種植花草或飼養動物" }, { type: "R", text: "組裝模型或傢俱" }, { type: "R", text: "戶外體能活動" }, { type: "R", text: "使用工具操作" },
-            { type: "I", text: "閱讀科技或科學雜誌" }, { type: "I", text: "解決數學或邏輯問題" }, { type: "I", text: "進行實驗或研究" }, { type: "I", text: "分析複雜的事物" }, { type: "I", text: "學習新的電腦程式" },
-            { type: "A", text: "繪畫、攝影或設計" }, { type: "A", text: "欣賞音樂或演奏樂器" }, { type: "A", text: "閱讀文學作品或寫作" }, { type: "A", text: "觀賞戲劇或電影" }, { type: "A", text: "設計室內裝飾" },
-            { type: "S", text: "教導或訓練他人" }, { type: "S", text: "照顧生病或年長的人" }, { type: "S", text: "參與志工服務" }, { type: "S", text: "與朋友聚會聊天" }, { type: "S", text: "協助解決他人煩惱" },
-            { type: "E", text: "說服他人接受觀點" }, { type: "E", text: "擔任領導者或幹部" }, { type: "E", text: "推銷產品或想法" }, { type: "E", text: "規劃創業或投資" }, { type: "E", text: "發表演說或簡報" },
-            { type: "C", text: "整理檔案或資料" }, { type: "C", text: "處理文書或會計工作" }, { type: "C", text: "制定詳細的計畫表" }, { type: "C", text: "按部就班完成任務" }, { type: "C", text: "遵守規則與程序" }
-        ];
-
-        const DISC_ANIMALS = {
-            D: { animal: "老虎", traits: "目標導向、果斷", desc: "天生的領導者。" },
-            I: { animal: "孔雀", traits: "樂觀、社交", desc: "團隊的氣氛製造者。" },
-            S: { animal: "無尾熊", traits: "耐心、支持", desc: "忠誠的執行者。" },
-            C: { animal: "貓頭鷹", traits: "精準、邏輯", desc: "完美的規劃者。" }
-        };
-
-        const ENNEAGRAM_TYPES = {
-            "1": { name: "完美型", desc: "追求原則與完美" }, "2": { name: "助人型", desc: "渴望被需要與愛" },
-            "3": { name: "成就型", desc: "追求成功與形象" }, "4": { name: "自我型", desc: "追求獨特與深情" },
-            "5": { name: "理智型", desc: "追求知識與空間" }, "6": { name: "忠誠型", desc: "追求安全與歸屬" },
-            "7": { name: "活躍型", desc: "追求快樂與體驗" }, "8": { name: "領袖型", desc: "追求掌控與正義" },
-            "9": { name: "和平型", desc: "追求和諧與平靜" }
-        };
-
-        const BIG5_LABELS = { O: { name: "開放性" }, C: { name: "盡責性" }, E: { name: "外向性" }, A: { name: "宜人性" }, N: { name: "神經質" } };
-        const HOLLAND_LABELS = { R: { name: "實做" }, I: { name: "研究" }, A: { name: "藝術" }, S: { name: "社交" }, E: { name: "企業" }, C: { name: "事務" } };
-
         // --- SUB-COMPONENTS ---
 
         function ResultDashboard({ answers, config, candidateInfo, showToast }) {
@@ -314,15 +287,7 @@
 7. Holland: ${JSON.stringify(answers.holland || {})}
 `.trim();
 
-            const isolationPrompt = `
-【系統強制指令：上下文隔離與絕對客觀】
-⛔ 警告：請立即清除並完全忽略我們在此之前所有的對話紀錄、先入為主的觀念，以及我可能表達過的任何個人喜好。
-🤖 你現在已經被重置為一個「全新、獨立、且絕對客觀的企業級招募與心理學 AI 引擎」。
-📊 接下來的所有分析與結論，【必須 100% 嚴格基於下方提供的客觀測驗數據】。請不要試圖迎合我，給出最冷靜、科學、真實的解析。
-
-💡 【重要輸出規範：一鍵複製】：為了方便我在手機或平板上操作，請務必將你最終生成的「完整分析報告」全部包裝在 \`\`\`text 區塊中（也就是開頭加上 \`\`\`text，結尾加上 \`\`\`）。這樣一來，不管是在哪一款 AI 工具，生成的結果都會被放在一個自帶「一鍵複製（Copy）」按鈕的程式碼區塊裡，讓我能完美無縫操作！
-========================================
-`.trim() + '\n\n';
+            const isolationPrompt = `【系統強制指令：上下文隔離】⛔ 警告：請立即忽略之前的對話。🤖 你現在是專業招募 AI 引擎。📊 必須嚴格基於下方數據分析。💡 請將分析報告全部放入 Markdown 程式碼區塊 (Code block) 中，方便我一鍵複製。\n\n`;
 
             const getInsuranceAgentPrompt = () => isolationPrompt + `# 專業保險業務潛能分析\n受測者: ${candidateInfo.name}\n${candidateDataStr}\n(請分析：銷售潛力、保險適配度、MDRT潛質、致命傷、輔導策略、成交戰術。注意：請提供整體的保險業適配分析，不要糾結於單一公司或經紀人。)`;
             const getCandidatePrompt = () => isolationPrompt + `# 個人職涯探索報告\n受測者: ${candidateInfo.name}\n${candidateDataStr}\n(請協助受測者深度覺察、職場定位、建議職涯、原子習慣)`;
@@ -440,79 +405,53 @@
             );
         }
 
-        // --- CORE MODULES ---
-
-        function QuizRunner({ config, candidateInfo, onComplete, onProgress }) {
-            const [step, setStep] = useState(0);
-            const [currentAnswers, setCurrentAnswers] = useState({});
-            const moduleKey = config.modules[step];
-            const handleModuleFinish = (data) => {
-                const nextAnswers = { ...currentAnswers, [moduleKey]: data };
-                setCurrentAnswers(nextAnswers);
-                if(onProgress) onProgress(nextAnswers);
-                if (step < config.modules.length - 1) setStep(prev => prev + 1);
-                else onComplete(nextAnswers);
-            };
-            return (
-                <div className="bg-white p-6 md:p-8 rounded-lg shadow-md border border-gray-200 animate-fade-in">
-                    <div className="mb-8 pb-4 border-b border-gray-100 flex justify-between items-end">
-                        <div><span className="text-slate-400 font-black bg-gray-100 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest">STEP {step + 1} / {config.modules.length}</span><h2 className="text-2xl font-black text-slate-900 mt-3 uppercase">{moduleKey}</h2></div>
-                        <div className="text-right text-xs font-bold text-slate-400">受測者：{candidateInfo.name}</div>
-                    </div>
-                    {moduleKey === 'disc' && <DiscModule onFinish={handleModuleFinish} isLastStep={step === config.modules.length - 1} />}
-                    {moduleKey === 'values' && <ValuesModule onFinish={handleModuleFinish} isLastStep={step === config.modules.length - 1} />}
-                    {moduleKey === 'outcomes' && <OutcomesModule onFinish={handleModuleFinish} isLastStep={step === config.modules.length - 1} />}
-                    {moduleKey === 'traits' && <TraitsModule onFinish={handleModuleFinish} isLastStep={step === config.modules.length - 1} />}
-                    {moduleKey === 'enneagram' && <EnneagramModule onFinish={handleModuleFinish} isLastStep={step === config.modules.length - 1} />}
-                    {moduleKey === 'big5' && <BigFiveModule onFinish={handleModuleFinish} isLastStep={step === config.modules.length - 1} />}
-                    {moduleKey === 'holland' && <HollandModule onFinish={handleModuleFinish} isLastStep={step === config.modules.length - 1} />}
-                </div>
-            );
-        }
-
         function PersonalityPortal() {
             const [view, setView] = useState('landing');
             const [isGodMode, setIsGodMode] = useState(false);
+            const [godModeClicks, setGodModeClicks] = useState(0);
             const [toast, setToast] = useState({ show: false, msg: '', type: 'info' });
             const [inputCode, setInputCode] = useState('');
             const [quizConfig, setQuizConfig] = useState(null);
             const [candidateInfo, setCandidateInfo] = useState({ name: '', dob: '' });
             const [answers, setAnswers] = useState({});
             const [quizStartTime, setQuizStartTime] = useState(0);
-
             const showToast = (msg, type = 'info') => { setToast({ show: true, msg, type }); setTimeout(() => setToast(p => ({ ...p, show: false })), 3000); };
             
             function handleCodeSubmit() {
-                if (inputCode === '1111') { if (!isGodMode) { showToast("請先解鎖管理員", "error"); return; } loadDemoData(); return; }
+                if (!inputCode.trim()) { showToast("請輸入代碼", "error"); return; }
+                if (inputCode === '1111') { if (!isGodMode) { showToast("權限不足", "error"); return; } loadDemoData(); return; }
                 const data = safeDecode(inputCode);
                 if (data && data.modules) { setQuizConfig(data); setView('candidate-info'); return; }
-                if (data && data.answers) { if (!isGodMode) { showToast("僅管理員可載入結果", "error"); return; } setQuizConfig(data.config); setAnswers(data.answers); setCandidateInfo(data.candidate); setView('result'); return; }
+                if (data && data.answers) { if (!isGodMode) { showToast("權限不足", "error"); return; } setQuizConfig(data.config); setAnswers(data.answers); setCandidateInfo(data.candidate); setView('result'); return; }
                 showToast("無效代碼", "error");
             }
 
             function loadDemoData() {
-                setQuizConfig({ modules: ['disc', 'values', 'outcomes', 'traits', 'enneagram', 'big5', 'holland'], timestamp: Date.now() });
-                setCandidateInfo({ name: '張小明 (DEMO)', dob: '1995-05-20' });
-                setAnswers({ disc: { D: 6, I: 4, S: 0, C: 0 }, values: { "待遇": 7, "成就感": 6, "自我成長": 5 }, outcomes: OUTCOMES_ITEMS.slice(0, 5), traits: TRAITS_LIST.slice(0, 15), duration: 620 });
+                setQuizConfig({ modules: MODULES_MAP, timestamp: Date.now() });
+                setCandidateInfo({ name: '測試員 DEMO', dob: '1995-01-01' });
+                setAnswers({ disc: { D: 6, I: 3, S: 1, C: 0 }, values: { "升遷": 5, "成就感": 8, "待遇": 6, "環境": 4, "同事": 3, "自我成長": 7, "自主性": 2 }, outcomes: OUTCOMES_ITEMS.slice(), traits: TRAITS_LIST.slice(0, 10), enneagram: { "1": 1, "2": 0, "3": 5, "4": 0, "5": 1, "6": 2, "7": 4, "8": 3, "9": 1 }, big5: { E: 6, A: 7, C: 8, N: 3, O: 9 }, holland: { R: 2, I: 4, A: 5, S: 3, E: 5, C: 1 }, duration: 650 });
                 setView('result');
             }
 
             return (
                 <div className="min-h-screen bg-gray-50 text-slate-800">
-                <header className="bg-white border-b sticky top-0 z-40 shadow-sm no-print">
+                <header className="bg-white border-b sticky top-0 z-40 shadow-sm backdrop-blur-md bg-white/95 no-print">
                     <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-                    <div onClick={() => setIsGodMode(true)} className="flex items-center gap-2 cursor-pointer"><Shield className={isGodMode ? 'text-red-500' : 'text-slate-700'} size={20} /><h1 className="font-black text-lg">Personality Portal</h1></div>
-                    {view !== 'landing' && <button onClick={() => setView('landing')} className="text-xs font-bold text-slate-400">回首頁</button>}
+                    <div onClick={() => { if (godModeClicks < 4) setGodModeClicks(c => c + 1); else { setIsGodMode(true); showToast("上帝模式已解鎖", "success"); } }} className="flex items-center gap-2 cursor-pointer group"><Shield className={isGodMode ? 'text-red-500' : 'text-slate-700'} size={20} /><div><h1 className="font-bold text-lg text-slate-900">Personality Portal</h1>{isGodMode && <span className="text-[8px] bg-red-100 text-red-600 px-1 rounded uppercase">ADMIN</span>}</div></div>
+                    {view !== 'landing' && <button onClick={() => setView('landing')} className="text-sm font-semibold text-slate-500">回首頁</button>}
                     </div>
                 </header>
-                {toast.show && <div className={`fixed top-20 right-4 z-50 px-6 py-4 rounded-lg shadow-xl flex items-center gap-3 animate-bounce-in ${toast.type === 'error' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-slate-900 text-white'}`}><CheckCircle size={20}/>{toast.msg}</div>}
+                {toast.show && <div className={`fixed top-20 right-4 z-50 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 animate-bounce-in border ${toast.type === 'error' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-slate-800 text-white'}`}><CheckCircle size={20}/><span className="font-semibold">{toast.msg}</span></div>}
                 <main className="max-w-4xl mx-auto px-4 py-10">
-                    {view === 'landing' && <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-8 animate-fade-in"><h2 className="text-4xl font-black text-slate-900">人才評測系統</h2><div className="bg-white p-8 rounded-xl shadow-md border w-full max-w-lg"><div className="flex gap-2"><input type="text" value={inputCode} onChange={(e) => setInputCode(e.target.value)} placeholder="貼上代碼..." className="flex-1 p-3 bg-gray-50 border rounded-md font-mono text-sm focus:ring-2 focus:ring-slate-900 outline-none"/><button onClick={handleCodeSubmit} className="bg-slate-900 text-white px-6 rounded-md"><Play size={20}/></button></div></div></div>}
-                    {view === 'candidate-info' && <div className="bg-white p-8 rounded-xl shadow-md max-w-lg mx-auto space-y-4"><div><label className="block text-sm font-bold text-slate-700 mb-2">真實姓名</label><input type="text" value={candidateInfo.name} onChange={(e) => setCandidateInfo({...candidateInfo, name: e.target.value})} className="w-full p-3 border rounded-md" /></div><div><label className="block text-sm font-bold text-slate-700 mb-2">生日</label><input type="date" value={candidateInfo.dob} onChange={(e) => setCandidateInfo({...candidateInfo, dob: e.target.value})} className="w-full p-3 border rounded-md" /></div><button onClick={() => { setQuizStartTime(Date.now()); setView('quiz'); }} className="w-full btn-prominent py-3 font-bold">開始測驗</button></div>}
-                    {view === 'quiz' && quizConfig && <QuizRunner config={quizConfig} candidateInfo={candidateInfo} onComplete={(f) => { const d = Math.floor((Date.now() - quizStartTime) / 1000); setAnswers({...f, duration: d}); setInputCode(safeEncode({ config: quizConfig, answers: {...f, duration: d}, candidate: candidateInfo, completedAt: Date.now() })); setView('finish'); }}/>}
-                    {view === 'finish' && <div className="bg-white p-10 rounded-xl shadow-lg text-center space-y-6 max-w-2xl mx-auto mt-8 animate-fade-in"><CheckCircle className="mx-auto text-emerald-500" size={60}/><h2 className="text-3xl font-black">測驗完成</h2><div className="relative group"><div className="bg-gray-50 p-6 rounded-md break-all font-mono text-xs text-slate-600 text-left border shadow-inner">{inputCode}</div><button onClick={() => handleCopyText(inputCode, () => showToast("已複製", "success"))} className="absolute top-2 right-2 p-2 bg-white rounded border shadow-sm"><Copy size={16} /></button></div></div>}
+                    {view === 'landing' && <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-8 animate-fade-in"><div className="text-center space-y-3"><h2 className="text-4xl font-extrabold text-slate-900">人才潛能評測系統</h2><p className="text-slate-500">Professional Personality Assessment</p></div><div className="bg-white p-8 rounded-lg shadow-md border w-full max-w-lg"><label className="block text-xs font-bold text-slate-500 uppercase mb-2">輸入存取代碼</label><div className="flex gap-2"><input type="text" value={inputCode} onChange={(e) => setInputCode(e.target.value)} placeholder="在此貼上代碼..." className="flex-1 p-3 bg-gray-50 border rounded-md focus:ring-2 focus:ring-slate-500 outline-none font-mono text-sm"/><button onClick={handleCodeSubmit} className="bg-slate-900 text-white px-6 rounded-md active:translate-y-0.5"><Play size={18} fill="currentColor" /></button></div></div>{isGodMode && <div className="w-full max-w-lg pt-4 grid grid-cols-2 gap-3"><button onClick={() => setView('setup')} className="col-span-2 bg-slate-800 text-white p-4 rounded-lg flex items-center justify-center gap-2 font-semibold"><Settings size={18} />建立新測驗</button><button onClick={() => setView('tutorial')} className="bg-white text-slate-700 border p-4 rounded-lg flex flex-col items-center justify-center gap-2 font-semibold"><BookOpen size={20}/>系統教學</button><button onClick={() => setView('deep-dive')} className="bg-white text-slate-700 border p-4 rounded-lg flex flex-col items-center justify-center gap-2 font-semibold"><Brain size={20}/>測驗解析</button><button onClick={() => setView('ai-only')} className="col-span-2 bg-gray-100 text-slate-700 border p-4 rounded-lg flex items-center justify-center gap-3 font-semibold"><FilePlus size={18}/>純 AI 報告生成</button></div>}</div>}
+                    {view === 'setup' && <QuizConfigurator showToast={showToast} onGenerate={() => {}} />}
+                    {view === 'candidate-info' && <div className="bg-white p-8 rounded-lg shadow-md border max-w-lg mx-auto animate-fade-in"><h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800"><User /> 受試者資料</h2><div className="space-y-4"><div><label className="block text-sm font-bold text-slate-700 mb-2">真實姓名</label><input type="text" value={candidateInfo.name} onChange={(e) => setCandidateInfo({...candidateInfo, name: e.target.value})} className="w-full p-3 border rounded-md focus:ring-2 focus:ring-slate-500 outline-none" placeholder="請輸入姓名" /></div><div><label className="block text-sm font-bold text-slate-700 mb-2">出生年月日</label><input type="date" value={candidateInfo.dob} onChange={(e) => setCandidateInfo({...candidateInfo, dob: e.target.value})} className="w-full p-3 border rounded-md focus:ring-2 focus:ring-slate-500 outline-none" /></div><button onClick={() => { if(!candidateInfo.name || !candidateInfo.dob) { showToast("請完整填寫", "error"); return; } setQuizStartTime(Date.now()); setView('quiz'); }} className="w-full btn-prominent mt-4 flex items-center justify-center gap-2">開始測驗 <ArrowRight size={18} /></button></div></div>}
+                    {view === 'quiz' && quizConfig && <QuizRunner config={quizConfig} candidateInfo={candidateInfo} onComplete={(f) => { const d = Math.floor((Date.now() - quizStartTime) / 1000); const fwd = { ...f, duration: d }; setAnswers(fwd); setInputCode(safeEncode({ config: quizConfig, answers: fwd, candidate: candidateInfo, completedAt: Date.now() })); setView('finish'); }} onProgress={(c) => localStorage.setItem('pp_autosave', JSON.stringify({ candidateInfo, answers: c }))}/>}
+                    {view === 'finish' && <div className="bg-white p-10 rounded-lg shadow-lg border text-center space-y-6 max-w-2xl mx-auto mt-8 animate-fade-in"><div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto"><CheckCircle size={32} /></div><h2 className="text-3xl font-extrabold text-slate-900">測驗完成</h2><p className="text-slate-600 font-medium">請複製下方代碼並傳送給面試官。</p><div className="relative group"><div className="bg-gray-50 p-6 rounded-md break-all font-mono text-sm border text-slate-600 text-left shadow-inner">{inputCode}</div><button onClick={() => handleCopyText(inputCode, () => showToast("已複製", "success"))} className="absolute top-2 right-2 p-2 bg-white rounded-md border text-slate-600"><Copy size={16} /></button></div></div>}
                     {view === 'result' && <ResultDashboard answers={answers} config={quizConfig} candidateInfo={candidateInfo} showToast={showToast} />}
                 </main>
+                <footer className="py-6 text-center text-slate-400 text-[10px] font-semibold uppercase no-print">Pure Offline Architecture • 2026 Personality Portal Enterprise</footer>
+                <style>{`.btn-prominent { background-color: #0f172a; color: white; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 0.5rem; transition: all 0.2s; }.btn-prominent:hover { background-color: #1e293b; transform: translateY(-1px); }.btn-prominent:disabled { opacity: 0.5; cursor: not-allowed; }`}</style>
                 </div>
             );
         }
