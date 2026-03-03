@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personality Portal - 保險業務潛能評測系統</title>
+    <title>Personality Portal - 雙模式潛能評測系統</title>
     
     <!-- 1. Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -19,16 +19,35 @@
     }
     </script>
 
-    <!-- 3. Babel Standalone -->
+    <!-- 3. Babel Standalone & HTML2PDF -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <!-- 自定義樣式 -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
-        
+        /* 載入芫荽體 Iansui */
+        @font-face {
+            font-family: 'Iansui';
+            /* 發佈至 GitHub 的終極字體載入策略：
+               1. 優先找使用者電腦內建的字體 (local)
+               2. 找 GitHub Repo 同目錄下的字體檔 (./Iansui-Regular.ttf)
+               3. 終極備援：如果上述都失敗，從 jsDelivr 開源 CDN 抓取，確保列印與 PDF 絕對不跑版
+            */
+            src: local('芫荽'),
+                 local('Iansui'),
+                 local('Iansui-Regular'),
+                 local('Iansui Regular'),
+                 url('./Iansui-Regular.ttf') format('truetype'),
+                 url('https://cdn.jsdelivr.net/gh/ButTaiwan/iansui@master/Iansui-Regular.ttf') format('truetype');
+            font-display: swap;
+        }
+
         body {
-            font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif;
-            background-color: #f8fafc; /* slate-50 */
+            /* 強制優先採用 Iansui，並設定基礎字重 */
+            font-family: 'Iansui', 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif !important;
+            background-color: #f8fafc; 
+            -webkit-tap-highlight-color: transparent;
+            font-weight: 600;
         }
 
         .custom-scroller::-webkit-scrollbar { width: 6px; }
@@ -41,16 +60,59 @@
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
         .animate-bounce-in { animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
 
+        .btn-prominent {
+            background-color: #0f172a; 
+            color: white;
+            font-weight: 700;
+            padding: 0.85rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-prominent:hover {
+            background-color: #1e293b;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn-prominent:active { transform: translateY(0); }
+        .btn-prominent:disabled { opacity: 0.5; transform: none; box-shadow: none; cursor: not-allowed; }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 列印專用排版 (單欄維持原樣) */
         @media print {
-            @page { margin: 0; size: auto; }
-            body { padding: 0; background: white; }
+            @page { margin: 1cm; size: A4 portrait; }
+            body { background-color: white !important; }
             .no-print { display: none !important; }
-            .print-only { display: block !important; }
+            
+            #report-container { 
+                box-shadow: none !important; 
+                border: none !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                max-width: 100% !important; 
+            }
+            .card { break-inside: avoid; page-break-inside: avoid; margin-bottom: 1.5rem !important; }
             .page-break-before { page-break-before: always; }
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-        .print-only { display: none; }
+        
+        /* 供 html2pdf.js 生成時套用的 class */
+        .pdf-export-mode {
+            background-color: white !important;
+            padding: 2rem !important;
+        }
+        .pdf-export-mode .no-print { display: none !important; }
+        .pdf-export-mode #report-container { box-shadow: none !important; border: none !important; margin: 0; max-width: 100%; }
+        .pdf-export-mode .card { break-inside: avoid; margin-bottom: 1.5rem !important; }
+        .pdf-export-mode .page-break-before { page-break-before: always; }
     </style>
 </head>
 <body>
@@ -58,18 +120,17 @@
 
     <!-- 4. 主程式碼 -->
     <script type="text/babel" data-type="module" data-presets="typescript,react">
-        import React, { useState, useEffect } from 'react';
+        import React, { useState, useEffect, useMemo } from 'react';
         import { createRoot } from 'react-dom/client';
         import { 
             Shield, User, Play, Settings, CheckCircle, AlertCircle, Copy, Printer, 
             ArrowRight, Brain, Target, ListOrdered, Plus, X, ChevronUp, ChevronDown, 
             Calendar, Clock, Briefcase, Lock, PieChart, Activity, Compass, BookOpen, 
             Edit3, Eye, Layers, FileText, HelpCircle, FilePlus, Info, RefreshCw,
-            Users, TrendingUp, List
+            Users, TrendingUp, List, Clipboard, Zap, ShieldAlert, Fingerprint, LogOut, Download
         } from 'lucide-react';
 
         // --- DATA & CONSTANTS ---
-        
         const DISC_QUESTIONS = [
             { id: 1, q: "在同事、朋友眼中您是一位？", options: [{ type: "D", text: "積極、熱情、有行動力的人" }, { type: "I", text: "活潑、開朗、風趣幽默的人" }, { type: "S", text: "忠誠、隨和、容易相處的人" }, { type: "C", text: "謹慎、冷靜、注意細節的人" }] },
             { id: 2, q: "您喜歡看哪一類型的雜誌？", options: [{ type: "D", text: "管理、財經、趨勢類" }, { type: "I", text: "旅遊、美食、時尚類" }, { type: "S", text: "心靈、散文、家庭類" }, { type: "C", text: "科技、專業、藝術類" }] },
@@ -84,13 +145,9 @@
         ];
 
         const VALUES_DEFINITIONS = [
-            { id: "升遷", text: "地位、名望、職銜" },
-            { id: "自主性", text: "不喜歡被人管、自我管理強" },
-            { id: "待遇", text: "收入、薪水" },
-            { id: "成就感", text: "在工作中得到的肯定" },
-            { id: "環境", text: "職場、家庭" },
-            { id: "同事", text: "人際關係" },
-            { id: "自我成長", text: "學習、進修" }
+            { id: "升遷", text: "地位、名望、職銜" }, { id: "自主性", text: "不喜歡被人管、自我管理強" },
+            { id: "待遇", text: "收入、薪水" }, { id: "成就感", text: "在工作中得到的肯定" },
+            { id: "環境", text: "職場、家庭" }, { id: "同事", text: "人際關係" }, { id: "自我成長", text: "學習、進修" }
         ];
 
         const VALUES_PAIRS = [
@@ -103,80 +160,19 @@
             { A: "同事", B: "待遇" }, { A: "自主性", B: "同事" }, { A: "環境", B: "自主性" }
         ];
 
-        // --- OUTCOMES (Fully Corrected to match user's file exactly) ---
         const OUTCOMES_ITEMS = [
-            { 
-                id: "O1", 
-                term: "獨立",
-                desc: "依照自己的意願運作自己的業務，做自己的老闆。", 
-                questions: ["• 你曾感到被限制？", "• 你覺得被規定和繁瑣手續打敗嗎？", "• 你是否經常與主管意見不同？"]
-            },
-            { 
-                id: "O2", 
-                term: "受肯定",
-                desc: "工作表現優良，能得到別人的讚賞，如在公開場合或演講中被表揚。", 
-                questions: ["• 「贏」對您而言有多重要？", "• 當別人獲得肯定時，你的感覺如何？", "• 為了贏得肯定，你會全力以赴嗎？"]
-            },
-            { 
-                id: "O3", 
-                term: "成就感",
-                desc: "這種感覺來自於你成功的完成工作，克服了阻礙且達到目標。", 
-                questions: ["• 你的表現與你所付出的努力相當嗎？", "• 當你完成一項工作時心中的感覺如何？", "• 你為自己設立什麼樣的目標？"]
-            },
-            { 
-                id: "O4", 
-                term: "休閒時間",
-                desc: "休閒時間對你而言是非常必要的嗎？你能依自己的意願自由運用時間，並從中獲得樂趣。", 
-                questions: ["• 休閒時間對你而言是非常必要的嗎？", "• 你能從休閒時間中獲得很大樂趣嗎？", "• 你真的很喜歡休閒時間嗎？"]
-            },
-            { 
-                id: "O5", 
-                term: "權力",
-                desc: "是一種掌握自己亦掌握別人命運的感覺，是一種可以指導別人行為，具備影響力的感覺。", 
-                questions: ["• 你感到已掌握了自己的命運嗎？", "• 別人常會來詢問你或等待你的指示嗎？", "• 你是否在做一些自己不想做的事？"]
-            },
-            { 
-                id: "O6", 
-                term: "聲望",
-                desc: "代表著同輩、同事、所屬的社團對你的尊重，並認為你是十分出眾的人物。", 
-                questions: ["• 聲望對你而言是重要的嗎？", "• 別人尊敬你嗎？", "• 你常常在做一些為贏得尊敬的事嗎？"]
-            },
-            { 
-                id: "O7", 
-                term: "金錢",
-                desc: "藉由工作所獲得的財務收入。", 
-                questions: ["• 你對你的收入感到自豪嗎？", "• 你喜歡與人談及金錢或你的消費、儲蓄、投資嗎？"]
-            },
-            { 
-                id: "O8", 
-                term: "挑戰",
-                desc: "隨時要求自己繼續不斷提高工作表現的感覺或動力。", 
-                questions: ["• 未盡全力時你是否會有罪惡感？", "• 你是否經常感覺自己應更下工夫？", "• 你是否需要主管給你激勵？"]
-            },
-            { 
-                id: "O9", 
-                term: "自尊",
-                desc: "自認為比同儕中其他成員優秀的程度。", 
-                questions: ["• 你對於自己的能力及作為有信心嗎？", "• 你會因不好的表現而感到罪惡感嗎？", "• 你對自己的表現感到滿意？"]
-            },
-            { 
-                id: "O10", 
-                term: "家庭生活",
-                desc: "與家人共同相處的時間與共度家庭快樂時光的品質。", 
-                questions: ["• 你是否花了很多時間與家人相處？夠嗎？", "• 和家人相處的時光值得嗎？", "• 家人會期待與你相處的時間嗎？"]
-            },
-            { 
-                id: "O11", 
-                term: "安全感",
-                desc: "重視工作與經濟來源的穩定性。", 
-                questions: ["• 工作的保障感覺對你來說重要嗎？", "• 你會害怕去嘗試一些新的事物嗎？", "• 你是否為了確保工作而作一些必要措施？"]
-            },
-            { 
-                id: "O12", 
-                term: "個人成長",
-                desc: "變得更有能力、更有效率、更為優秀的一種個人成長感覺。", 
-                questions: ["• 過去一年來，你自認有成長嗎？", "• 你是否有做些事情來促進個人成長？", "• 是否有計畫去多做些事？"]
-            }
+            { id: "O1", term: "獨立", desc: "依照自己的意願運作自己的業務，做自己的老闆。", questions: ["• 你曾感到被限制？", "• 你覺得被規定和繁瑣手續打敗嗎？", "• 你是否經常與主管意見不同？"] },
+            { id: "O2", term: "受肯定", desc: "工作表現優良，能得到別人的讚賞，如在公開場合或演講中被表揚。", questions: ["• 「贏」對您而言有多重要？", "• 當別人獲得肯定時，你的感覺如何？", "• 為了贏得肯定，你會全力以赴嗎？"] },
+            { id: "O3", term: "成就感", desc: "這種感覺來自於你成功的完成工作，克服了阻礙且達到目標。", questions: ["• 你的表現與你所付出的努力相當嗎？", "• 當你完成一項工作時心中的感覺如何？", "• 你為自己設立什麼樣的目標？"] },
+            { id: "O4", term: "休閒時間", desc: "休閒時間對你而言是非常必要的嗎？你能依自己的意願自由運用時間，並從中獲得樂趣。", questions: ["• 休閒時間對你而言是非常必要的嗎？", "• 你能從休閒時間中獲得很大樂趣嗎？", "• 你真的很喜歡休閒時間嗎？"] },
+            { id: "O5", term: "權力", desc: "是一種掌握自己亦掌握別人命運的感覺，是一種可以指導別人行為，具備影響力的感覺。", questions: ["• 你感到已掌握了自己的命運嗎？", "• 別人常會來詢問你或等待你的指示嗎？", "• 你是否在做一些自己不想做的事？"] },
+            { id: "O6", term: "聲望", desc: "代表著同輩、同事、所屬的社團對你的尊重，並認為你是十分出眾的人物。", questions: ["• 聲望對你而言是重要的嗎？", "• 別人尊敬你嗎？", "• 你常常在做一些為贏得尊敬的事嗎？"] },
+            { id: "O7", term: "金錢", desc: "藉由工作所獲得的財務收入。", questions: ["• 你對你的收入感到自豪嗎？", "• 你喜歡與人談及金錢或你的消費、儲蓄、投資嗎？"] },
+            { id: "O8", term: "挑戰", desc: "隨時要求自己繼續不斷提高工作表現的感覺或動力。", questions: ["• 未盡全力時你是否會有罪惡感？", "• 你是否經常感覺自己應更下工夫？", "• 你是否需要主管給你激勵？"] },
+            { id: "O9", term: "自尊", desc: "自認為比同儕中其他成員優秀的程度。", questions: ["• 你對於自己的能力及作為有信心嗎？", "• 你會因不好的表現而感到罪惡感嗎？", "• 你對自己的表現感到滿意？"] },
+            { id: "O10", term: "家庭生活", desc: "與家人共同相處的時間與共度家庭快樂時光的品質。", questions: ["• 你是否花了很多時間與家人相處？夠嗎？", "• 和家人相處的時光值得嗎？", "• 家人會期待與你相處的時間嗎？"] },
+            { id: "O11", term: "安全感", desc: "重視工作與經濟來源的穩定性。", questions: ["• 工作的保障感覺對你來說重要嗎？", "• 你會害怕去嘗試一些新的事物嗎？", "• 你是否為了確保工作而作一些必要措施？"] },
+            { id: "O12", term: "個人成長", desc: "變得更有能力、更有效率、更為優秀的一種個人成長感覺。", questions: ["• 過去一年來，你自認有成長嗎？", "• 你是否有做些事情來促進個人成長？", "• 是否有計畫去多做些事？"] }
         ];
 
         const TRAITS_LIST = [
@@ -189,37 +185,23 @@
         ];
 
         const ENNEAGRAM_QUESTIONS = [
-            { id: 1, type: "1", text: "我對自己要求很高，事情不做則已，要做就要做到完美。" },
-            { id: 2, type: "1", text: "我容易看到錯誤和不完美，並且很想去糾正它們。" },
-            { id: 3, type: "2", text: "我喜歡幫助別人，覺得被需要是一種幸福。" },
-            { id: 4, type: "2", text: "我常把別人的需求放在自己之前，有時會忽略了自己的感受。" },
-            { id: 5, type: "3", text: "我非常重視目標和效率，喜歡競爭並贏得勝利。" },
-            { id: 6, type: "3", text: "我希望成為眾人目光的焦點，被別人讚賞和肯定。" },
-            { id: 7, type: "4", text: "我覺得自己很獨特，別人不容易真正了解我。" },
-            { id: 8, type: "4", text: "我的情緒起伏比較大，對於美感和氣氛很敏感。" },
-            { id: 9, type: "5", text: "我喜歡獨處思考，去深入研究感興趣的知識。" },
-            { id: 10, type: "5", text: "我對於過度的社交活動感到疲憊，需要保有私人空間。" },
-            { id: 11, type: "6", text: "我做事比較謹慎，會預先設想可能發生的危險或問題。" },
-            { id: 12, type: "6", text: "我很重視團體歸屬感，對信任的朋友或權威非常忠誠。" },
-            { id: 13, type: "7", text: "我喜歡新鮮有趣的事物，討厭沉悶和束縛。" },
-            { id: 14, type: "7", text: "我是個樂觀主義者，總能從負面事情中看到正面的一面。" },
-            { id: 15, type: "8", text: "我說話直接，不喜歡拐彎抹角，喜歡掌握主導權。" },
-            { id: 16, type: "8", text: "當遇到不公義的事情時，我會挺身而出捍衛自己或他人。" },
-            { id: 17, type: "9", text: "我不喜歡衝突，通常會順著別人的意思以維持和諧。" },
-            { id: 18, type: "9", text: "我有時會拖延，對於要做決定的事情感到壓力。" }
+            { id: 1, type: "1", text: "我對自己要求很高，事情不做則已，要做就要做到完美。" }, { id: 2, type: "1", text: "我容易看到錯誤和不完美，並且很想去糾正它們。" },
+            { id: 3, type: "2", text: "我喜歡幫助別人，覺得被需要是一種幸福。" }, { id: 4, type: "2", text: "我常把別人的需求放在自己之前，有時會忽略了自己的感受。" },
+            { id: 5, type: "3", text: "我非常重視目標和效率，喜歡競爭並贏得勝利。" }, { id: 6, type: "3", text: "我希望成為眾人目光的焦點，被別人讚賞和肯定。" },
+            { id: 7, type: "4", text: "我覺得自己很獨特，別人不容易真正了解我。" }, { id: 8, type: "4", text: "我的情緒起伏比較大，對於美感和氣氛很敏感。" },
+            { id: 9, type: "5", text: "我喜歡獨處思考，去深入研究感興趣的知識。" }, { id: 10, type: "5", text: "我對於過度的社交活動感到疲憊，需要保有私人空間。" },
+            { id: 11, type: "6", text: "我做事比較謹慎，會預先設想可能發生的危險或問題。" }, { id: 12, type: "6", text: "我很重視團體歸屬感，對信任的朋友或權威非常忠誠。" },
+            { id: 13, type: "7", text: "我喜歡新鮮有趣的事物，討厭沉悶和束縛。" }, { id: 14, type: "7", text: "我是個樂觀主義者，總能從負面事情中看到正面的一面。" },
+            { id: 15, type: "8", text: "我說話直接，不喜歡拐彎抹角，喜歡掌握主導權。" }, { id: 16, type: "8", text: "當遇到不公義的事情時，我會挺身而出捍衛自己或他人。" },
+            { id: 17, type: "9", text: "我不喜歡衝突，通常會順著別人的意思以維持和諧。" }, { id: 18, type: "9", text: "我有時會拖延，對於要做決定的事情感到壓力。" }
         ];
 
         const BIG5_QUESTIONS = [
-            { id: 1, dim: "E", rev: false, text: "我認為自己是：外向、熱情的人" },
-            { id: 2, dim: "A", rev: true,  text: "我認為自己是：挑剔、好爭論的人" },
-            { id: 3, dim: "C", rev: false, text: "我認為自己是：可靠、自律的人" },
-            { id: 4, dim: "N", rev: false, text: "我認為自己是：焦慮、容易心煩的人" },
-            { id: 5, dim: "O", rev: false, text: "我認為自己是：體驗豐富、思想開放的人" },
-            { id: 6, dim: "E", rev: true,  text: "我認為自己是：內向、安靜的人" },
-            { id: 7, dim: "A", rev: false, text: "我認為自己是：有同情心、溫暖的人" },
-            { id: 8, dim: "C", rev: true,  text: "我認為自己是：雜亂、粗心的人" },
-            { id: 9, dim: "N", rev: true,  text: "我認為自己是：冷靜、情緒穩定的人" },
-            { id: 10,dim: "O", rev: true,  text: "我認為自己是：傳統、缺乏創造力的人" }
+            { id: 1, dim: "E", rev: false, text: "我認為自己是：外向、熱情的人" }, { id: 2, dim: "A", rev: true,  text: "我認為自己是：挑剔、好爭論的人" },
+            { id: 3, dim: "C", rev: false, text: "我認為自己是：可靠、自律的人" }, { id: 4, dim: "N", rev: false, text: "我認為自己是：焦慮、容易心煩的人" },
+            { id: 5, dim: "O", rev: false, text: "我認為自己是：體驗豐富、思想開放的人" }, { id: 6, dim: "E", rev: true,  text: "我認為自己是：內向、安靜的人" },
+            { id: 7, dim: "A", rev: false, text: "我認為自己是：有同情心、溫暖的人" }, { id: 8, dim: "C", rev: true,  text: "我認為自己是：雜亂、粗心的人" },
+            { id: 9, dim: "N", rev: true,  text: "我認為自己是：冷靜、情緒穩定的人" }, { id: 10,dim: "O", rev: true,  text: "我認為自己是：傳統、缺乏創造力的人" }
         ];
 
         const HOLLAND_ACTIVITIES = [
@@ -239,82 +221,51 @@
         };
 
         const ENNEAGRAM_TYPES = {
-            "1": { name: "完美型", desc: "追求原則與完美" },
-            "2": { name: "助人型", desc: "渴望被需要與愛" },
-            "3": { name: "成就型", desc: "追求成功與形象" },
-            "4": { name: "自我型", desc: "追求獨特與深情" },
-            "5": { name: "理智型", desc: "追求知識與空間" },
-            "6": { name: "忠誠型", desc: "追求安全與歸屬" },
-            "7": { name: "活躍型", desc: "追求快樂與體驗" },
-            "8": { name: "領袖型", desc: "追求掌控與正義" },
+            "1": { name: "完美型", desc: "追求原則與完美" }, "2": { name: "助人型", desc: "渴望被需要與愛" },
+            "3": { name: "成就型", desc: "追求成功與形象" }, "4": { name: "自我型", desc: "追求獨特與深情" },
+            "5": { name: "理智型", desc: "追求知識與空間" }, "6": { name: "忠誠型", desc: "追求安全與歸屬" },
+            "7": { name: "活躍型", desc: "追求快樂與體驗" }, "8": { name: "領袖型", desc: "追求掌控與正義" },
             "9": { name: "和平型", desc: "追求和諧與平靜" }
         };
 
         const BIG5_LABELS = {
-            O: { name: "開放性 (Openness)", desc: "想像力、好奇心" },
-            C: { name: "盡責性 (Conscientiousness)", desc: "自律、目標導向" },
-            E: { name: "外向性 (Extraversion)", desc: "熱情、社交活力" },
-            A: { name: "宜人性 (Agreeableness)", desc: "信任、利他" },
+            O: { name: "開放性 (Openness)", desc: "想像力、好奇心" }, C: { name: "盡責性 (Conscientiousness)", desc: "自律、目標導向" },
+            E: { name: "外向性 (Extraversion)", desc: "熱情、社交活力" }, A: { name: "宜人性 (Agreeableness)", desc: "信任、利他" },
             N: { name: "神經質 (Neuroticism)", desc: "敏感、情緒波動" }
         };
 
         const HOLLAND_LABELS = {
-            R: { name: "實做型 (Realistic)", desc: "動手操作、重視具體" },
-            I: { name: "研究型 (Investigative)", desc: "思考分析、解決問題" },
-            A: { name: "藝術型 (Artistic)", desc: "創新直覺、自我表達" },
-            S: { name: "社交型 (Social)", desc: "助人教導、重視關係" },
-            E: { name: "企業型 (Enterprising)", desc: "領導說服、追求成就" },
-            C: { name: "事務型 (Conventional)", desc: "按部就班、重視精確" }
+            R: { name: "實做型 (Realistic)", desc: "動手操作、重視具體" }, I: { name: "研究型 (Investigative)", desc: "思考分析、解決問題" },
+            A: { name: "藝術型 (Artistic)", desc: "創新直覺、自我表達" }, S: { name: "社交型 (Social)", desc: "助人教導、重視關係" },
+            E: { name: "企業型 (Enterprising)", desc: "領導說服、追求成就" }, C: { name: "事務型 (Conventional)", desc: "按部就班、重視精確" }
         };
 
-        // --- UTILS ---
-        
         const MODULES_MAP = ['disc', 'values', 'outcomes', 'traits', 'enneagram', 'big5', 'holland'];
 
+        // --- ENCODE / DECODE (標準版用) ---
         const compress = (data) => {
             if (!data) return data;
-            
             if (data.modules && data.timestamp && !data.answers) {
                 const mIdx = data.modules.map((m) => MODULES_MAP.indexOf(m));
                 return { v: 2, t: 'c', d: [mIdx, data.timestamp] };
             }
-
             if (data.answers && data.candidate) {
                 const c = [data.candidate.name, data.candidate.dob];
                 const a = {};
                 const ans = data.answers;
-
                 if (ans.disc) a.d = [ans.disc.D || 0, ans.disc.I || 0, ans.disc.S || 0, ans.disc.C || 0];
-                
                 if (ans.values) {
-                a.v = Object.entries(ans.values).map(([k, v]) => {
-                    const idx = VALUES_DEFINITIONS.findIndex(def => def.id === k);
-                    return idx >= 0 ? [idx, v] : null;
-                }).filter(Boolean);
+                    a.v = Object.entries(ans.values).map(([k, v]) => {
+                        const idx = VALUES_DEFINITIONS.findIndex(def => def.id === k);
+                        return idx >= 0 ? [idx, v] : null;
+                    }).filter(Boolean);
                 }
-
-                if (ans.outcomes) {
-                a.o = ans.outcomes.map((item) => OUTCOMES_ITEMS.findIndex(def => def.id === item.id));
-                }
-
-                if (ans.traits) {
-                a.t = ans.traits.map((t) => TRAITS_LIST.indexOf(t)).filter((i) => i >= 0);
-                }
-
-                if (ans.enneagram) {
-                a.e = Array.from({length: 9}, (_, i) => ans.enneagram[String(i + 1)] || 0);
-                }
-
-                if (ans.big5) {
-                a.b = [ans.big5.O || 0, ans.big5.C || 0, ans.big5.E || 0, ans.big5.A || 0, ans.big5.N || 0];
-                }
-
-                if (ans.holland) {
-                a.h = [ans.holland.R || 0, ans.holland.I || 0, ans.holland.A || 0, ans.holland.S || 0, ans.holland.E || 0, ans.holland.C || 0];
-                }
-
+                if (ans.outcomes) a.o = ans.outcomes.map((item) => OUTCOMES_ITEMS.findIndex(def => def.id === item.id));
+                if (ans.traits) a.t = ans.traits.map((t) => TRAITS_LIST.indexOf(t)).filter((i) => i >= 0);
+                if (ans.enneagram) a.e = Array.from({length: 9}, (_, i) => ans.enneagram[String(i + 1)] || 0);
+                if (ans.big5) a.b = [ans.big5.O || 0, ans.big5.C || 0, ans.big5.E || 0, ans.big5.A || 0, ans.big5.N || 0];
+                if (ans.holland) a.h = [ans.holland.R || 0, ans.holland.I || 0, ans.holland.A || 0, ans.holland.S || 0, ans.holland.E || 0, ans.holland.C || 0];
                 const mIdx = data.config?.modules?.map((m) => MODULES_MAP.indexOf(m)) || [];
-
                 return { v: 2, t: 'r', d: [c, a, mIdx, data.completedAt] };
             }
             return data;
@@ -322,234 +273,153 @@
 
         const decompress = (data) => {
             if (!data || data.v !== 2) return data;
-
             if (data.t === 'c') {
                 const [mIdx, timestamp] = data.d;
-                return {
-                modules: mIdx.map((i) => MODULES_MAP[i]),
-                timestamp
-                };
+                return { modules: mIdx.map((i) => MODULES_MAP[i]), timestamp };
             }
-
             if (data.t === 'r') {
                 const [c, a, mIdx, completedAt] = data.d;
-                
                 const candidate = { name: c[0], dob: c[1] };
                 const config = { modules: mIdx.map((i) => MODULES_MAP[i]) };
                 const answers = {};
-
                 if (a.d) answers.disc = { D: a.d[0], I: a.d[1], S: a.d[2], C: a.d[3] };
-                
                 if (a.v) {
-                answers.values = {};
-                a.v.forEach(([i, val]) => {
-                    if (VALUES_DEFINITIONS[i]) answers.values[VALUES_DEFINITIONS[i].id] = val;
-                });
+                    answers.values = {};
+                    a.v.forEach(([i, val]) => { if (VALUES_DEFINITIONS[i]) answers.values[VALUES_DEFINITIONS[i].id] = val; });
                 }
-
-                if (a.o) {
-                answers.outcomes = a.o.map((i) => OUTCOMES_ITEMS[i]).filter(Boolean);
-                }
-
-                if (a.t) {
-                answers.traits = a.t.map((i) => TRAITS_LIST[i]).filter(Boolean);
-                }
-
-                if (a.e) {
-                answers.enneagram = {};
-                a.e.forEach((val, i) => answers.enneagram[String(i + 1)] = val);
-                }
-
-                if (a.b) {
-                answers.big5 = { O: a.b[0], C: a.b[1], E: a.b[2], A: a.b[3], N: a.b[4] };
-                }
-
-                if (a.h) {
-                answers.holland = { R: a.h[0], I: a.h[1], A: a.h[2], S: a.h[3], E: a.h[4], C: a.h[5] };
-                }
-
+                if (a.o) answers.outcomes = a.o.map((i) => OUTCOMES_ITEMS[i]).filter(Boolean);
+                if (a.t) answers.traits = a.t.map((i) => TRAITS_LIST[i]).filter(Boolean);
+                if (a.e) { answers.enneagram = {}; a.e.forEach((val, i) => answers.enneagram[String(i + 1)] = val); }
+                if (a.b) answers.big5 = { O: a.b[0], C: a.b[1], E: a.b[2], A: a.b[3], N: a.b[4] };
+                if (a.h) answers.holland = { R: a.h[0], I: a.h[1], A: a.h[2], S: a.h[3], E: a.h[4], C: a.h[5] };
                 return { candidate, config, answers, completedAt };
             }
             return data;
         };
 
         const safeEncode = (data) => {
-            try {
-                const processedData = compress(data);
-                const jsonString = JSON.stringify(processedData);
-                const bytes = new TextEncoder().encode(jsonString);
-                const binString = Array.from(bytes, (byte) => String.fromCodePoint(byte)).join("");
-                return btoa(binString);
-            } catch (e) {
-                console.error("Encoding error", e);
-                return "";
-            }
+            try { return btoa(Array.from(new TextEncoder().encode(JSON.stringify(compress(data))), (byte) => String.fromCodePoint(byte)).join("")); } 
+            catch (e) { return ""; }
         };
 
         const safeDecode = (str) => {
             if (!str) return null;
-            const cleanStr = str.trim();
             try {
                 let decodedData = null;
-                try {
-                    const binString = atob(cleanStr);
-                    const bytes = Uint8Array.from(binString, (c) => c.codePointAt(0));
-                    decodedData = JSON.parse(new TextDecoder().decode(bytes));
-                } catch (e) {
-                    decodedData = JSON.parse(decodeURIComponent(escape(atob(cleanStr))));
-                }
+                try { decodedData = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(str.trim()), (c) => c.codePointAt(0)))); } 
+                catch (e) { decodedData = JSON.parse(decodeURIComponent(escape(atob(str.trim())))); }
                 return decompress(decodedData);
-            } catch (e2) {
-                return null;
-            }
+            } catch (e2) { return null; }
         };
 
+        // --- UTILS ---
         const handleCopyText = (text, onSuccess, onError) => {
             try {
                 const textArea = document.createElement("textarea");
-                textArea.value = text;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-9999px";
-                textArea.style.top = "0";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
+                textArea.value = text; textArea.style.position = "fixed"; textArea.style.left = "-9999px"; textArea.style.top = "0";
+                document.body.appendChild(textArea); textArea.focus(); textArea.select();
                 const successful = document.execCommand('copy');
                 document.body.removeChild(textArea);
-                if (successful) { if (onSuccess) onSuccess(); } 
-                else { if (onError) onError(); }
-            } catch (err) {
-                if (onError) onError();
-            }
+                if (successful) { if (onSuccess) onSuccess(); } else { if (onError) onError(); }
+            } catch (err) { if (onError) onError(); }
         };
 
+        // 全域列印函數，會建立新視窗並套用 Tailwind CSS
+        // 修正 Babel 腳本中被解析器誤判截斷的問題：將 script 關閉標籤拆分寫法
         const handleSafePrint = (setToast, candidateName) => {
             const printContent = document.getElementById('report-container');
             if (!printContent) return;
-
             const win = window.open('', '', 'height=842,width=595');
-            if (!win) {
-                setToast({ show: true, msg: "列印視窗被阻擋，請允許彈跳視窗", type: "error" });
-                return;
-            }
+            if (!win) { if(setToast) setToast({ show: true, msg: "列印視窗被阻擋，請允許彈跳視窗", type: "error" }); return; }
             
-            const reportDate = new Date().toLocaleDateString().replace(/\//g, '-');
-            const safeName = candidateName || '未知姓名';
-            const docTitle = `性格分析報告 - ${safeName} - ${reportDate}`;
+            const docTitle = `性格分析報告 - ${candidateName || '未知姓名'} - ${new Date().toLocaleDateString().replace(/\//g, '-')}`;
             
-            const styles = document.getElementsByTagName('style')[0].innerHTML;
+            // 抓取當前頁面所有的樣式 (包含 Tailwind CDN 動態生成的 CSS)
+            let styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+                                .map(el => el.outerHTML)
+                                .join('\n');
+                                
+            // 將字體的相對路徑轉換為絕對路徑，確保列印彈跳視窗 (about:blank) 也能讀取到本機字體檔
+            const baseHref = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            styles = styles.replace(/\.\/Iansui-Regular\.ttf/g, baseHref + 'Iansui-Regular.ttf');
             
-            const html = `
+            win.document.write(`
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <title>${docTitle}</title>
+                    ${styles}
                     <style>
-                        ${styles}
-                        body { padding: 40px; }
+                        body { padding: 20px; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Iansui', 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif !important; font-weight: 600; }
                         .no-print { display: none !important; }
                         .print-only { display: block !important; }
+                        #report-container { box-shadow: none !important; border: none !important; margin: 0 !important; max-width: 100% !important; padding: 0 !important; }
+                        .card { break-inside: avoid; page-break-inside: avoid; margin-bottom: 1.5rem !important; }
+                        .page-break-before { page-break-before: always; }
+                        @media print { @page { margin: 1cm; size: A4 portrait; } }
                     </style>
                 </head>
                 <body>
-                    ${printContent.innerHTML}
-                    <div class="footer">Personality Portal Analysis Report • Generated on ${new Date().toLocaleString()}</div>
+                    ${printContent.outerHTML}
+                    <div style="margin-top:20px; font-size:12px; color:#666; text-align:center;">Personality Portal Analysis Report • Generated on ${new Date().toLocaleString()}</div>
                     <script>
-                    window.onload = function() { window.print(); window.close(); }
-                    <\/script>
+                        window.onload = function() {
+                            setTimeout(() => { window.print(); window.close(); }, 500);
+                        };
+                    </` + `script>
                 </body>
                 </html>
-            `;
-            
-            win.document.write(html);
+            `);
             win.document.close();
         };
 
         // --- SUB-COMPONENTS ---
-
         const RadarChart = ({ data, size = 200, color = "#4f46e5" }) => {
-            const count = data.length;
-            const center = size / 2;
-            const radius = (size / 2) - 45;
-            const angleStep = (Math.PI * 2) / count;
-
+            const count = data.length; const center = size / 2; const radius = (size / 2) - 45; const angleStep = (Math.PI * 2) / count;
             const getCoordinates = (value, index, maxVal) => {
-                const angle = index * angleStep - Math.PI / 2;
-                const r = (value / maxVal) * radius;
-                const x = center + r * Math.cos(angle);
-                const y = center + r * Math.sin(angle);
-                return { x, y };
+                const angle = index * angleStep - Math.PI / 2; const r = (value / maxVal) * radius;
+                return { x: center + r * Math.cos(angle), y: center + r * Math.sin(angle) };
             };
-
-            const rawMax = Math.max(...data.map((d) => d.value), 1);
-            const chartMax = Math.max(rawMax, 5);
-
-            const gridLevels = [0.33, 0.66, 1];
-            const gridPolygons = gridLevels.map(level => {
-                return data.map((_, i) => {
-                const { x, y } = getCoordinates(level * chartMax, i, chartMax); 
-                return `${x},${y}`;
-                }).join(" ");
-            });
-
-            const polygonPoints = data.map((d, i) => {
-                const { x, y } = getCoordinates(d.value, i, chartMax);
-                return `${x},${y}`;
-            }).join(" ");
-
-            const labelPoints = data.map((d, i) => {
-                const angle = i * angleStep - Math.PI / 2;
-                const r = radius + 25;
-                const x = center + r * Math.cos(angle);
-                const y = center + r * Math.sin(angle);
-                return { x, y, label: d.label };
-            });
-
+            const chartMax = Math.max(Math.max(...data.map((d) => d.value), 1), 5);
+            const gridPolygons = [0.33, 0.66, 1].map(level => data.map((_, i) => { const { x, y } = getCoordinates(level * chartMax, i, chartMax); return `${x},${y}`; }).join(" "));
+            const polygonPoints = data.map((d, i) => { const { x, y } = getCoordinates(d.value, i, chartMax); return `${x},${y}`; }).join(" ");
+            
             return (
                 <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
-                {gridPolygons.map((points, i) => (
-                    <polygon key={i} points={points} fill="none" stroke="#e2e8f0" strokeWidth="1" />
-                ))}
-                {data.map((_, i) => {
-                    const { x, y } = getCoordinates(chartMax, i, chartMax);
-                    return <line key={i} x1={center} y1={center} x2={x} y2={y} stroke="#e2e8f0" strokeWidth="1" />;
-                })}
+                {gridPolygons.map((points, i) => <polygon key={i} points={points} fill="none" stroke="#e2e8f0" strokeWidth="1" />)}
+                {data.map((_, i) => { const { x, y } = getCoordinates(chartMax, i, chartMax); return <line key={i} x1={center} y1={center} x2={x} y2={y} stroke="#e2e8f0" strokeWidth="1" />; })}
                 <polygon points={polygonPoints} fill={color} fillOpacity="0.2" stroke={color} strokeWidth="2" />
+                {data.map((d, i) => { const { x, y } = getCoordinates(d.value, i, chartMax); return <circle key={i} cx={x} cy={y} r="3" fill={color} />; })}
                 {data.map((d, i) => {
-                    const { x, y } = getCoordinates(d.value, i, chartMax);
-                    return <circle key={i} cx={x} cy={y} r="3" fill={color} />;
+                    const angle = i * angleStep - Math.PI / 2; const r = radius + 25;
+                    return <text key={i} x={center + r * Math.cos(angle)} y={center + r * Math.sin(angle)} textAnchor="middle" dominantBaseline="middle" className="text-[11px] fill-slate-500 font-bold" style={{fontSize: '11px'}}>{d.label}</text>;
                 })}
-                {labelPoints.map((p, i) => (
-                    <text key={i} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle" className="text-[11px] fill-slate-500 font-bold" style={{fontSize: '11px'}}>
-                    {p.label}
-                    </text>
-                ))}
                 </svg>
             );
         };
 
-        function DiscModule({ onFinish, isLastStep }) {
+        function DiscModule({ onFinish, isLastStep, isCampusMode }) {
             const [responses, setResponses] = useState({});
             const isComplete = DISC_QUESTIONS.every(q => responses[q.id]);
             return (
-                <div className="space-y-8">
-                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-semibold text-sm">請在每一題中，選擇一個最符合您狀況的描述。</div>
+                <div className="space-y-8 animate-fade-in">
+                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-bold text-sm">請在每一題中，選擇一個最符合您狀況的描述。</div>
                 {DISC_QUESTIONS.map((q, i) => (
-                    <div key={q.id} className="space-y-3">
-                    <h3 className="font-bold text-lg text-slate-800">{i + 1}. {q.q}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div key={q.id} className="space-y-4">
+                    <h3 className="font-extrabold text-lg text-slate-800">{i + 1}. {q.q}</h3>
+                    <div className={`grid grid-cols-1 ${isCampusMode ? 'sm:grid-cols-2' : 'md:grid-cols-2'} gap-3`}>
                         {q.options.map(opt => (
-                        <button key={opt.type} onClick={() => setResponses({...responses, [q.id]: opt.type})} className={`text-left p-4 rounded-lg border transition-all font-medium ${responses[q.id] === opt.type ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white border-gray-200 text-slate-600 hover:bg-gray-50'}`}>{opt.text}</button>
+                        <button key={opt.type} onClick={() => setResponses({...responses, [q.id]: opt.type})} className={`text-left ${isCampusMode ? 'p-5 active:scale-[0.98]' : 'p-4'} rounded-lg border transition-all font-bold ${responses[q.id] === opt.type ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white border-gray-200 text-slate-600 hover:bg-gray-50'}`}>{opt.text}</button>
                         ))}
                     </div>
                     </div>
                 ))}
-                <button onClick={() => { const scores = { D: 0, I: 0, S: 0, C: 0 }; Object.values(responses).forEach(v => scores[v] = (scores[v] || 0) + 1); onFinish(scores); }} disabled={!isComplete} className="w-full btn-prominent mt-8">{isLastStep ? "完成測驗" : "下一步"}</button>
+                <button onClick={() => { const scores = { D: 0, I: 0, S: 0, C: 0 }; Object.values(responses).forEach(v => scores[v] = (scores[v] || 0) + 1); onFinish(scores); }} disabled={!isComplete} className="w-full btn-prominent mt-8 py-4 text-lg">{isLastStep ? "完成測驗" : "下一步"}</button>
                 </div>
             );
         }
 
-        function ValuesModule({ onFinish, isLastStep }) {
+        function ValuesModule({ onFinish, isLastStep, isCampusMode }) {
             const [phase, setPhase] = useState(1);
             const [top3, setTop3] = useState([]);
             const [idx, setIdx] = useState(0);
@@ -559,253 +429,216 @@
                 const toggle = (id) => { if (top3.includes(id)) setTop3(top3.filter(x => x !== id)); else if (top3.length < 3) setTop3([...top3, id]); };
                 return (
                 <div className="space-y-6 animate-fade-in">
-                    <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-semibold text-sm">階段一：請閱讀定義，並選出您認為「最重要」的 3 項。</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-bold text-sm">階段一：請閱讀定義，並選出您認為「最重要」的 3 項。</div>
+                    <div className={`grid grid-cols-1 ${isCampusMode ? 'sm:grid-cols-2' : 'md:grid-cols-2'} gap-4`}>
                     {VALUES_DEFINITIONS.map(d => (
-                        <div key={d.id} onClick={() => toggle(d.id)} className={`p-5 rounded-lg border cursor-pointer transition-all flex justify-between items-start ${top3.includes(d.id) ? 'border-slate-800 bg-gray-50 shadow-sm' : 'border-gray-200 hover:bg-gray-50'}`}>
-                        <div><div className={`font-bold text-lg ${top3.includes(d.id) ? 'text-slate-900' : 'text-slate-700'}`}>{d.id}</div><div className="text-sm text-slate-500 mt-1">{d.text}</div></div>
+                        <div key={d.id} onClick={() => toggle(d.id)} className={`p-5 rounded-lg border cursor-pointer transition-all flex justify-between items-start ${isCampusMode && 'active:scale-[0.98]'} ${top3.includes(d.id) ? 'border-slate-800 bg-gray-50 shadow-sm' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <div><div className={`font-extrabold text-lg ${top3.includes(d.id) ? 'text-slate-900' : 'text-slate-700'}`}>{d.id}</div><div className="text-sm font-bold text-slate-500 mt-1">{d.text}</div></div>
                         {top3.includes(d.id) && <CheckCircle className="text-slate-800" />}
                         </div>
                     ))}
                     </div>
-                    <button disabled={top3.length !== 3} onClick={() => setPhase(2)} className="w-full btn-prominent mt-4">進入階段二</button>
+                    <button disabled={top3.length !== 3} onClick={() => setPhase(2)} className="w-full btn-prominent mt-4 py-4 text-lg">進入階段二</button>
                 </div>
                 );
             }
             const pair = VALUES_PAIRS[idx];
             const choose = (val) => {
-                const next = { ...pairChoices, [idx]: val };
-                setPairChoices(next);
+                const next = { ...pairChoices, [idx]: val }; setPairChoices(next);
                 if (idx < VALUES_PAIRS.length - 1) setTimeout(() => setIdx(idx + 1), 150);
                 else { const tally = {}; Object.values(next).forEach(v => tally[v] = (tally[v] || 0) + 1); onFinish(tally); }
             };
             return (
                 <div className="max-w-xl mx-auto text-center space-y-8 py-8 animate-fade-in">
                 <div className="inline-block px-4 py-1 bg-gray-100 rounded-full text-xs font-bold text-slate-500 tracking-wide">題數 {idx + 1} / {VALUES_PAIRS.length}</div>
-                <h3 className="text-2xl font-extrabold text-slate-900">您認為哪一項較符合您的價值觀？</h3>
+                <h3 className="text-2xl font-black text-slate-900">您認為哪一項較符合您的價值觀？</h3>
                 <div className="grid grid-cols-1 gap-6">
-                    <button onClick={() => choose(pair.A)} className="p-8 border border-gray-200 rounded-lg hover:border-slate-400 hover:bg-gray-50 transition-all text-2xl font-bold text-slate-700 hover:text-slate-900 shadow-sm hover:shadow-md">{pair.A}</button>
-                    <div className="text-slate-300 font-bold text-sm tracking-widest">OR</div>
-                    <button onClick={() => choose(pair.B)} className="p-8 border border-gray-200 rounded-lg hover:border-slate-400 hover:bg-gray-50 transition-all text-2xl font-bold text-slate-700 hover:text-slate-900 shadow-sm hover:shadow-md">{pair.B}</button>
+                    <button onClick={() => choose(pair.A)} className={`p-8 border border-gray-200 rounded-lg hover:border-slate-400 hover:bg-gray-50 transition-all text-2xl font-extrabold text-slate-700 hover:text-slate-900 shadow-sm hover:shadow-md ${isCampusMode && 'active:scale-95'}`}>{pair.A}</button>
+                    <div className="text-slate-300 font-extrabold text-sm tracking-widest">OR</div>
+                    <button onClick={() => choose(pair.B)} className={`p-8 border border-gray-200 rounded-lg hover:border-slate-400 hover:bg-gray-50 transition-all text-2xl font-extrabold text-slate-700 hover:text-slate-900 shadow-sm hover:shadow-md ${isCampusMode && 'active:scale-95'}`}>{pair.B}</button>
                 </div>
                 </div>
             );
         }
 
-        function OutcomesModule({ onFinish, isLastStep }) {
+        function OutcomesModule({ onFinish, isLastStep, isCampusMode }) {
             const [pool, setPool] = useState(OUTCOMES_ITEMS);
             const [ranked, setRanked] = useState([]);
-
             const add = (item) => { setRanked([...ranked, item]); setPool(pool.filter(i => i.id !== item.id)); };
-            const remove = (item) => { 
-                 const newPool = [...pool, item].sort((a, b) => parseInt(a.id.substring(1)) - parseInt(b.id.substring(1)));
-                 setPool(newPool); 
-                 setRanked(ranked.filter(i => i.id !== item.id)); 
-            };
+            const remove = (item) => { setPool([...pool, item].sort((a, b) => parseInt(a.id.substring(1)) - parseInt(b.id.substring(1)))); setRanked(ranked.filter(i => i.id !== item.id)); };
             const move = (idx, dir) => {
                 if ((dir === -1 && idx === 0) || (dir === 1 && idx === ranked.length - 1)) return;
                 const copy = [...ranked]; const temp = copy[idx]; copy[idx] = copy[idx + dir]; copy[idx + dir] = temp; setRanked(copy);
             };
 
             return (
-                <div className="space-y-6">
-                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-semibold text-sm">請將左側項目點擊加入右側，並透過箭頭調整排序（越上方越重要）。需完成所有排序。</div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-auto lg:h-[600px]">
-                    <div className="bg-gray-50 rounded-lg p-4 flex flex-col h-[500px] lg:h-full border border-gray-200 shadow-inner">
+                <div className="space-y-6 animate-fade-in flex flex-col h-full">
+                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-bold text-sm">請將左側項目點擊加入右側，並透過箭頭調整排序（越上方越重要）。需完成所有排序。</div>
+                
+                {/* 修正：使用 vh 限制高度，確保下方按鈕不會被覆蓋 */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 relative z-10">
+                    <div className={`bg-gray-50 rounded-lg ${isCampusMode ? 'p-3 sm:p-4' : 'p-4'} flex flex-col h-[45vh] min-h-[350px] max-h-[500px] border border-gray-200 shadow-inner`}>
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-3">待選項目 ({pool.length})</div>
                     <div className="overflow-y-auto flex-1 space-y-3 pr-2 custom-scroller">
                         {pool.map(item => (
-                        <div key={item.id} onClick={() => add(item)} className="bg-white p-4 rounded-md shadow-sm border border-gray-200 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group">
-                            <div className="flex justify-between items-start mb-2">
-                            <span className="text-lg font-bold text-slate-800 group-hover:text-emerald-700">{item.term}</span>
-                            <Plus size={20} className="text-slate-300 group-hover:text-emerald-500"/>
+                        <div key={item.id} onClick={() => add(item)} className={`bg-white p-4 rounded-md shadow-sm border border-gray-200 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group ${isCampusMode && 'active:scale-[0.98]'}`}>
+                            <div className="flex justify-between items-center mb-2">
+                            <span className="text-lg font-extrabold text-slate-800 group-hover:text-emerald-700">{item.term}</span>
+                            <Plus size={isCampusMode ? 24 : 20} className={`text-slate-300 group-hover:text-emerald-500 ${isCampusMode && 'bg-slate-50 rounded-full p-1'}`}/>
                             </div>
-                            <p className="text-sm text-slate-600 mb-3 leading-relaxed">{item.desc}</p>
-                            {item.questions && (
-                            <div className="bg-slate-50 p-3 rounded text-xs text-slate-500 leading-relaxed border border-slate-100">
-                                {item.questions.map((q, idx) => <div key={idx} className="mb-1 last:mb-0">{q}</div>)}
-                            </div>
-                            )}
+                            <p className="text-sm font-bold text-slate-600 leading-relaxed">{item.desc}</p>
                         </div>
                         ))}
                     </div>
                     </div>
-                    <div className="bg-white rounded-lg p-4 flex flex-col h-[500px] lg:h-full border-2 border-slate-100 shadow-lg">
+                    
+                    <div className={`bg-white rounded-lg ${isCampusMode ? 'p-3 sm:p-4' : 'p-4'} flex flex-col h-[45vh] min-h-[350px] max-h-[500px] border-2 border-slate-100 shadow-lg`}>
                     <div className="text-xs font-bold text-slate-500 uppercase tracking-widest text-center mb-3">您的排序 (Top 1 最重要)</div>
                     <div className="overflow-y-auto flex-1 space-y-2 pr-2 custom-scroller">
                         {ranked.map((item, i) => (
-                        <div key={item.id} className="bg-slate-50 p-3 rounded-md border border-slate-200 flex items-center gap-3 animate-fade-in">
-                            <div className={`w-8 h-8 rounded flex items-center justify-center font-bold text-sm shrink-0 ${i < 3 ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-gray-200'}`}>{i + 1}</div>
-                            <div className="flex-1">
-                            <span className="text-sm font-bold text-slate-800 block">{item.term}</span>
+                        <div key={item.id} className={`bg-slate-50 ${isCampusMode ? 'p-3 sm:p-4' : 'p-3'} rounded-md border border-slate-200 flex items-center gap-3 animate-fade-in`}>
+                            <div className={`w-8 h-8 rounded flex items-center justify-center font-black text-sm shrink-0 ${i < 3 ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-gray-200'}`}>{i + 1}</div>
+                            <div className="flex-1"><span className={`${isCampusMode ? 'text-base' : 'text-sm'} font-extrabold text-slate-800 block`}>{item.term}</span></div>
+                            <div className={`flex ${isCampusMode ? 'gap-2' : 'gap-1'} shrink-0`}>
+                                <button onClick={() => move(i, -1)} className={isCampusMode ? 'p-2 sm:p-3 bg-white border border-gray-200 shadow-sm rounded-lg text-slate-500 active:scale-95' : 'p-1 hover:bg-white rounded text-slate-400 hover:text-slate-800'}><ChevronUp size={isCampusMode ? 20 : 18}/></button>
+                                <button onClick={() => move(i, 1)} className={isCampusMode ? 'p-2 sm:p-3 bg-white border border-gray-200 shadow-sm rounded-lg text-slate-500 active:scale-95' : 'p-1 hover:bg-white rounded text-slate-400 hover:text-slate-800'}><ChevronDown size={isCampusMode ? 20 : 18}/></button>
+                                <button onClick={() => remove(item)} className={isCampusMode ? 'p-2 sm:p-3 bg-red-50 border border-red-100 shadow-sm rounded-lg text-red-400 active:scale-95 ml-1' : 'p-1 hover:bg-red-50 rounded text-slate-300 hover:text-red-500 ml-1'}><X size={isCampusMode ? 20 : 18}/></button>
                             </div>
-                            <div className="flex gap-1 shrink-0"><button onClick={() => move(i, -1)} className="p-1 hover:bg-white rounded text-slate-400 hover:text-slate-800"><ChevronUp size={18}/></button><button onClick={() => move(i, 1)} className="p-1 hover:bg-white rounded text-slate-400 hover:text-slate-800"><ChevronDown size={18}/></button><button onClick={() => remove(item)} className="p-1 hover:bg-red-50 rounded text-slate-300 hover:text-red-500 ml-1"><X size={18}/></button></div>
                         </div>
                         ))}
                     </div>
                     </div>
                 </div>
-                <div className="pt-4"><button disabled={pool.length > 0} onClick={() => onFinish(ranked)} className="w-full btn-prominent">{isLastStep ? "完成測驗" : "下一步"}</button></div>
+                
+                {/* 確保按鈕被獨立放置於下方 */}
+                <div className="pt-4 relative z-20">
+                    <button disabled={pool.length > 0} onClick={() => onFinish(ranked)} className="w-full btn-prominent py-4 text-lg shadow-lg">{isLastStep ? "完成測驗" : "下一步"}</button>
+                </div>
                 </div>
             );
         }
 
-        function TraitsModule({ onFinish, isLastStep }) {
+        function TraitsModule({ onFinish, isLastStep, isCampusMode }) {
             const [checked, setChecked] = useState([]);
             const toggle = (t) => { if (checked.includes(t)) setChecked(checked.filter(x => x !== t)); else setChecked([...checked, t]); };
             return (
-                <div className="space-y-8">
-                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-semibold text-sm">請勾選您認為您具備的特質。</div>
+                <div className="space-y-8 animate-fade-in">
+                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-bold text-sm">請勾選您認為您具備的特質。</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {TRAITS_LIST.map(t => (
-                    <label key={t} className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all select-none ${checked.includes(t) ? 'border-slate-800 bg-gray-50 shadow-sm' : 'border-gray-200 hover:border-slate-300 bg-white'}`}>
+                    <label key={t} className={`flex items-center gap-3 ${isCampusMode ? 'p-5 active:scale-[0.98]' : 'p-4'} rounded-lg border cursor-pointer transition-all select-none ${checked.includes(t) ? 'border-slate-800 bg-gray-50 shadow-sm' : 'border-gray-200 hover:border-slate-300 bg-white'}`}>
                         <input type="checkbox" className="hidden" checked={checked.includes(t)} onChange={() => toggle(t)} />
-                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${checked.includes(t) ? 'bg-slate-800 border-slate-800' : 'bg-white border-gray-300'}`}>{checked.includes(t) && <CheckCircle size={14} className="text-white" />}</div>
-                        <span className={`font-bold ${checked.includes(t) ? 'text-slate-900' : 'text-slate-600'}`}>{t}</span>
+                        <div className={`rounded border flex items-center justify-center transition-colors ${isCampusMode ? 'w-6 h-6' : 'w-5 h-5'} ${checked.includes(t) ? 'bg-slate-800 border-slate-800' : 'bg-white border-gray-300'}`}>{checked.includes(t) && <CheckCircle size={isCampusMode ? 16 : 14} className="text-white" />}</div>
+                        <span className={`font-extrabold ${isCampusMode ? 'text-base' : ''} ${checked.includes(t) ? 'text-slate-900' : 'text-slate-600'}`}>{t}</span>
                     </label>
                     ))}
                 </div>
-                <button onClick={() => onFinish(checked)} className="w-full btn-prominent mt-6">{isLastStep ? "完成所有測驗" : "下一步"}</button>
+                <button onClick={() => onFinish(checked)} className="w-full btn-prominent mt-6 py-4 text-lg">{isLastStep ? "完成所有測驗" : "下一步"}</button>
                 </div>
             );
         }
 
-        function EnneagramModule({ onFinish, isLastStep }) {
+        function EnneagramModule({ onFinish, isLastStep, isCampusMode }) {
             const [selections, setSelections] = useState({});
             const isComplete = ENNEAGRAM_QUESTIONS.every(q => selections[q.id] !== undefined);
             return (
-                <div className="space-y-8">
-                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-semibold text-sm">請勾選「是」如果該描述非常符合您，否則勾選「否」。</div>
+                <div className="space-y-8 animate-fade-in">
+                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-bold text-sm">請勾選「是」如果該描述非常符合您，否則勾選「否」。</div>
                 <div className="grid grid-cols-1 gap-4">
                     {ENNEAGRAM_QUESTIONS.map((q) => (
-                    <div key={q.id} className="p-4 bg-white border border-gray-200 rounded-lg flex flex-col md:flex-row justify-between items-center gap-4 hover:border-slate-300 transition-colors">
-                        <span className="font-bold text-slate-700 flex-1">{q.text}</span>
-                        <div className="flex gap-2 shrink-0">
-                        <button onClick={() => setSelections({...selections, [q.id]: 1})} className={`px-4 py-2 rounded-md font-bold border transition-colors ${selections[q.id] === 1 ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-400 border-gray-200 hover:bg-gray-50'}`}>是</button>
-                        <button onClick={() => setSelections({...selections, [q.id]: 0})} className={`px-4 py-2 rounded-md font-bold border transition-colors ${selections[q.id] === 0 ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-400 border-gray-200 hover:bg-gray-50'}`}>否</button>
+                    <div key={q.id} className={`${isCampusMode ? 'p-5' : 'p-4'} bg-white border border-gray-200 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:border-slate-300 transition-colors`}>
+                        <span className={`font-extrabold text-slate-700 flex-1 ${isCampusMode ? 'text-base leading-relaxed' : ''}`}>{q.text}</span>
+                        <div className="flex gap-2 sm:gap-3 shrink-0">
+                        <button onClick={() => setSelections({...selections, [q.id]: 1})} className={`flex-1 sm:flex-none ${isCampusMode ? 'px-8 py-3 rounded-lg active:scale-95' : 'px-4 py-2 rounded-md'} font-black border transition-colors ${selections[q.id] === 1 ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-400 border-gray-200 hover:bg-gray-50'}`}>是</button>
+                        <button onClick={() => setSelections({...selections, [q.id]: 0})} className={`flex-1 sm:flex-none ${isCampusMode ? 'px-8 py-3 rounded-lg active:scale-95' : 'px-4 py-2 rounded-md'} font-black border transition-colors ${selections[q.id] === 0 ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-400 border-gray-200 hover:bg-gray-50'}`}>否</button>
                         </div>
                     </div>
                     ))}
                 </div>
                 <button onClick={() => {
-                    const scores = {};
-                    ENNEAGRAM_QUESTIONS.forEach(q => { if(selections[q.id] === 1) scores[q.type] = (scores[q.type] || 0) + 1; });
-                    onFinish(scores);
-                }} disabled={!isComplete} className="w-full btn-prominent mt-6">{isLastStep ? "完成測驗" : "下一步"}</button>
+                    const scores = {}; ENNEAGRAM_QUESTIONS.forEach(q => { if(selections[q.id] === 1) scores[q.type] = (scores[q.type] || 0) + 1; }); onFinish(scores);
+                }} disabled={!isComplete} className="w-full btn-prominent mt-6 py-4 text-lg">{isLastStep ? "完成測驗" : "下一步"}</button>
                 </div>
             );
         }
 
-        function BigFiveModule({ onFinish, isLastStep }) {
+        function BigFiveModule({ onFinish, isLastStep, isCampusMode }) {
             const [ratings, setRatings] = useState({});
             const isComplete = BIG5_QUESTIONS.every(q => ratings[q.id]);
             return (
-                <div className="space-y-8">
-                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-semibold text-sm">請評分以下描述符合您的程度 (1:非常不同意 - 5:非常同意)。</div>
+                <div className="space-y-8 animate-fade-in">
+                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-bold text-sm">請評分以下描述符合您的程度 (1:非常不同意 - 5:非常同意)。</div>
                 {BIG5_QUESTIONS.map((q) => (
-                    <div key={q.id} className="space-y-2">
-                    <div className="font-bold text-slate-700">{q.text}</div>
-                    <div className="flex justify-between gap-2">
+                    <div key={q.id} className={isCampusMode ? 'space-y-3 bg-white p-5 rounded-lg border border-gray-200' : 'space-y-2'}>
+                    <div className={`font-extrabold text-slate-700 ${isCampusMode ? 'text-base' : ''}`}>{q.text}</div>
+                    <div className={`flex justify-between gap-2 ${isCampusMode ? 'sm:gap-4' : ''}`}>
                         {[1,2,3,4,5].map(v => (
-                        <button key={v} onClick={() => setRatings({...ratings, [q.id]: v})} className={`flex-1 py-3 rounded-md font-bold border transition-all ${ratings[q.id] === v ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-400 border-gray-200 hover:bg-gray-50'}`}>{v}</button>
+                        <button key={v} onClick={() => setRatings({...ratings, [q.id]: v})} className={`flex-1 ${isCampusMode ? 'py-4 sm:py-5 rounded-lg text-lg active:scale-95' : 'py-3 rounded-md'} font-black border transition-all ${ratings[q.id] === v ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-400 border-gray-200 hover:bg-gray-50'}`}>{v}</button>
                         ))}
                     </div>
                     </div>
                 ))}
                 <button onClick={() => {
                     const scores = { O: 0, C: 0, E: 0, A: 0, N: 0 };
-                    BIG5_QUESTIONS.forEach(q => {
-                    const raw = ratings[q.id];
-                    const val = q.rev ? (6 - raw) : raw;
-                    scores[q.dim] = (scores[q.dim] || 0) + val;
-                    });
+                    BIG5_QUESTIONS.forEach(q => { const raw = ratings[q.id]; const val = q.rev ? (6 - raw) : raw; scores[q.dim] = (scores[q.dim] || 0) + val; });
                     onFinish(scores);
-                }} disabled={!isComplete} className="w-full btn-prominent mt-6">{isLastStep ? "完成測驗" : "下一步"}</button>
+                }} disabled={!isComplete} className="w-full btn-prominent mt-6 py-4 text-lg">{isLastStep ? "完成測驗" : "下一步"}</button>
                 </div>
             );
         }
 
-        function HollandModule({ onFinish, isLastStep }) {
+        function HollandModule({ onFinish, isLastStep, isCampusMode }) {
             const [selected, setSelected] = useState([]);
             const toggle = (i) => { if(selected.includes(i)) setSelected(selected.filter(x=>x!==i)); else setSelected([...selected, i]); };
             return (
-                <div className="space-y-8">
-                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-semibold text-sm">請勾選您感興趣或喜歡的活動 (可多選)。</div>
+                <div className="space-y-8 animate-fade-in">
+                <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-bold text-sm">請勾選您感興趣或喜歡的活動 (可多選)。</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {HOLLAND_ACTIVITIES.map((act, i) => (
-                    <div key={i} onClick={() => toggle(i)} className={`p-4 border rounded-lg cursor-pointer flex items-center justify-between transition-colors ${selected.includes(i) ? 'border-slate-800 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                        <span className={`font-bold ${selected.includes(i) ? 'text-slate-900' : 'text-slate-600'}`}>{act.text}</span>
-                        {selected.includes(i) && <CheckCircle className="text-slate-800" size={18}/>}
+                    <div key={i} onClick={() => toggle(i)} className={`${isCampusMode ? 'p-5 active:scale-[0.98]' : 'p-4'} border rounded-lg cursor-pointer flex items-center justify-between transition-colors ${selected.includes(i) ? 'border-slate-800 bg-gray-50' : 'border-gray-200 hover:bg-gray-50 bg-white'}`}>
+                        <span className={`font-extrabold ${isCampusMode ? 'text-base' : ''} ${selected.includes(i) ? 'text-slate-900' : 'text-slate-600'}`}>{act.text}</span>
+                        {selected.includes(i) && <CheckCircle className="text-slate-800" size={isCampusMode ? 20 : 18}/>}
                     </div>
                     ))}
                 </div>
                 <button onClick={() => {
-                    const scores = { R:0, I:0, A:0, S:0, E:0, C:0 };
-                    selected.forEach(i => { const type = HOLLAND_ACTIVITIES[i].type; scores[type]++; });
-                    onFinish(scores);
-                }} className="w-full btn-prominent mt-6">{isLastStep ? "完成測驗" : "下一步"}</button>
+                    const scores = { R:0, I:0, A:0, S:0, E:0, C:0 }; selected.forEach(i => { const type = HOLLAND_ACTIVITIES[i].type; scores[type]++; }); onFinish(scores);
+                }} className="w-full btn-prominent mt-6 py-4 text-lg">{isLastStep ? "完成測驗" : "下一步"}</button>
                 </div>
             );
         }
 
         function QuizConfigurator({ showToast, onGenerate }) {
-            const [modules, setModules] = useState({ 
-                disc: true, values: true, outcomes: true, traits: true, 
-                enneagram: true, big5: true, holland: true 
-            });
+            const [modules, setModules] = useState({ disc: true, values: true, outcomes: true, traits: true, enneagram: true, big5: true, holland: true });
             const [code, setCode] = useState('');
 
             const generate = () => {
                 const active = Object.keys(modules).filter(k => modules[k]);
-                if (active.length === 0) {
-                showToast("請至少選擇一個模組", "error");
-                return;
-                }
+                if (active.length === 0) { showToast("請至少選擇一個模組", "error"); return; }
                 const payload = { modules: active, timestamp: Date.now() };
-                const str = safeEncode(payload);
-                setCode(str);
+                const str = safeEncode(payload); setCode(str);
                 handleCopyText(str, () => showToast("已複製到剪貼簿", "success"));
                 onGenerate(str);
             };
 
             return (
-                <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200 animate-fade-in">
-                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800"><Settings className="text-slate-700"/> 建立測驗配置</h2>
+                <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200 animate-fade-in max-w-2xl mx-auto">
+                <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-slate-800"><Settings className="text-slate-700"/> 建立測驗配置 (遠端標準版)</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    {[
-                    { id: 'disc', label: 'DISC 性格測驗', sub: '10題完整版' },
-                    { id: 'values', label: '工作價值觀', sub: '7項定義 + 21題二選一' },
-                    { id: 'outcomes', label: 'Outcomes 驅動力', sub: '12項價值排序' },
-                    { id: 'traits', label: '成功特質檢核', sub: '35項特質掃描' },
-                    { id: 'enneagram', label: '九型人格 (New)', sub: '18題快速版' },
-                    { id: 'big5', label: '大五人格 (New)', sub: 'TIPI 10題版' },
-                    { id: 'holland', label: '職業興趣 RIASEC (New)', sub: '30項興趣檢核' }
-                    ].map(m => (
-                    <div 
-                        key={m.id} 
-                        onClick={() => setModules({...modules, [m.id]: !modules[m.id]})}
-                        className={`p-4 border rounded-lg cursor-pointer transition-all flex justify-between items-center ${
-                        modules[m.id] ? 'border-slate-800 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'
-                        }`}
-                    >
-                        <div>
-                        <div className={`font-bold ${modules[m.id] ? 'text-slate-900' : 'text-slate-500'}`}>{m.label}</div>
-                        <div className="text-xs text-slate-400">{m.sub}</div>
-                        </div>
+                    {[{ id: 'disc', label: 'DISC 性格測驗', sub: '10題完整版' }, { id: 'values', label: '工作價值觀', sub: '7項定義 + 21題二選一' }, { id: 'outcomes', label: 'Outcomes 驅動力', sub: '12項價值排序' }, { id: 'traits', label: '成功特質檢核', sub: '35項特質掃描' }, { id: 'enneagram', label: '九型人格', sub: '18題快速版' }, { id: 'big5', label: '大五人格', sub: 'TIPI 10題版' }, { id: 'holland', label: '職業興趣 RIASEC', sub: '30項興趣檢核' }].map(m => (
+                    <div key={m.id} onClick={() => setModules({...modules, [m.id]: !modules[m.id]})} className={`p-4 border rounded-lg cursor-pointer transition-all flex justify-between items-center ${modules[m.id] ? 'border-slate-800 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <div><div className={`font-extrabold ${modules[m.id] ? 'text-slate-900' : 'text-slate-500'}`}>{m.label}</div><div className="text-xs font-bold text-slate-400">{m.sub}</div></div>
                         {modules[m.id] && <CheckCircle size={20} className="text-slate-800" />}
                     </div>
                     ))}
                 </div>
-                <button onClick={generate} className="w-full btn-prominent">產生 Config Code</button>
-                
+                <button onClick={generate} className="w-full btn-prominent py-4 text-lg">產生 Config Code</button>
                 {code && (
                     <div className="mt-6 bg-gray-50 p-4 rounded-md border border-gray-200 animate-fade-in">
-                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-wide">Config Code</label>
+                    <label className="text-xs font-black text-slate-500 mb-2 block uppercase tracking-wide">Config Code</label>
                     <div className="flex gap-2">
-                        <input readOnly value={code} className="flex-1 bg-white border border-gray-300 rounded-md p-2 text-sm font-mono text-slate-600" />
-                        <button onClick={() => handleCopyText(code, () => showToast("已複製", "success"))} className="p-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors">
-                        <Copy size={16} />
-                        </button>
+                        <input readOnly value={code} className="flex-1 bg-white border border-gray-300 rounded-md p-2 text-sm font-mono text-slate-600 font-bold" />
+                        <button onClick={() => handleCopyText(code, () => showToast("已複製", "success"))} className="p-2 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"><Copy size={16} /></button>
                     </div>
                     </div>
                 )}
@@ -813,7 +646,7 @@
             );
         }
 
-        function QuizRunner({ config, candidateInfo, onComplete, onProgress }) {
+        function QuizRunner({ config, candidateInfo, onComplete, onProgress, isCampusMode }) {
             const [step, setStep] = useState(0);
             const [currentAnswers, setCurrentAnswers] = useState({});
             const moduleKey = config.modules[step];
@@ -823,396 +656,610 @@
                 const nextAnswers = { ...currentAnswers, [moduleKey]: data };
                 setCurrentAnswers(nextAnswers);
                 if(onProgress) onProgress(nextAnswers);
-                
-                if (!isLastStep) {
-                setStep(prev => prev + 1);
-                window.scrollTo(0, 0);
-                } else {
-                onComplete(nextAnswers);
-                }
+                if (!isLastStep) { setStep(prev => prev + 1); window.scrollTo(0, 0); } 
+                else { onComplete(nextAnswers); }
             };
 
+            const Wrapper = isCampusMode ? 'div' : 'div';
+            const wrapperClass = isCampusMode ? 'bg-white p-5 sm:p-8 rounded-xl shadow-md border border-gray-200 animate-fade-in max-w-3xl mx-auto relative' : 'bg-white p-6 md:p-8 rounded-lg shadow-md border border-gray-200 animate-fade-in max-w-3xl mx-auto';
+
             return (
-                <div className="bg-white p-6 md:p-8 rounded-lg shadow-md border border-gray-200 animate-fade-in">
+                <Wrapper className={wrapperClass}>
                 <div className="mb-8 pb-4 border-b border-gray-100 flex justify-between items-end">
                     <div>
-                    <span className="text-slate-600 font-bold bg-gray-100 px-3 py-1 rounded-full text-xs tracking-wider">STEP {step + 1} / {config.modules.length}</span>
-                    <h2 className="text-2xl font-extrabold text-slate-900 mt-3 uppercase tracking-tight">{moduleKey}</h2>
+                    <span className="text-slate-600 font-black bg-gray-100 px-3 py-1 rounded-full text-xs tracking-wider">STEP {step + 1} / {config.modules.length}</span>
+                    <h2 className="text-2xl font-black text-slate-900 mt-3 uppercase tracking-tight">{moduleKey}</h2>
                     </div>
-                    <div className="text-right text-xs font-semibold text-slate-400">受測者：{candidateInfo.name}</div>
+                    <div className="text-right text-xs font-bold text-slate-400">受測者：{candidateInfo.name}</div>
                 </div>
-
-                {moduleKey === 'disc' && <DiscModule onFinish={handleModuleFinish} isLastStep={isLastStep} />}
-                {moduleKey === 'values' && <ValuesModule onFinish={handleModuleFinish} isLastStep={isLastStep} />}
-                {moduleKey === 'outcomes' && <OutcomesModule onFinish={handleModuleFinish} isLastStep={isLastStep} />}
-                {moduleKey === 'traits' && <TraitsModule onFinish={handleModuleFinish} isLastStep={isLastStep} />}
-                {moduleKey === 'enneagram' && <EnneagramModule onFinish={handleModuleFinish} isLastStep={isLastStep} />}
-                {moduleKey === 'big5' && <BigFiveModule onFinish={handleModuleFinish} isLastStep={isLastStep} />}
-                {moduleKey === 'holland' && <HollandModule onFinish={handleModuleFinish} isLastStep={isLastStep} />}
-                </div>
+                {moduleKey === 'disc' && <DiscModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
+                {moduleKey === 'values' && <ValuesModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
+                {moduleKey === 'outcomes' && <OutcomesModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
+                {moduleKey === 'traits' && <TraitsModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
+                {moduleKey === 'enneagram' && <EnneagramModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
+                {moduleKey === 'big5' && <BigFiveModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
+                {moduleKey === 'holland' && <HollandModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
+                </Wrapper>
             );
         }
 
-        function ResultDashboard({ answers, config, candidateInfo, showToast }) {
+        // --- NEW Markdown Renderer Component (針對 AI 報告的粗體解析) ---
+        const renderMarkdown = (text) => {
+            if (!text) return <span className="text-slate-400 italic font-bold">（尚未輸入 AI 分析報告）</span>;
+            
+            const formatInline = (str) => {
+                // 將 **包圍的字串** 替換為醒目的 <strong> 標籤
+                const parts = str.split(/(\*\*.*?\*\*)/g);
+                return parts.map((part, i) => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                        return <strong key={i} className="font-black text-indigo-900 bg-indigo-50 px-1 mx-0.5 rounded border border-indigo-100">{part.slice(2, -2)}</strong>;
+                    }
+                    return part;
+                });
+            };
+
+            const lines = text.split('\n');
+            return lines.map((line, index) => {
+                const tLine = line.trim();
+                // Headers
+                if (tLine.startsWith('### ')) return <h3 key={index} className="text-lg font-black text-slate-800 mt-6 mb-2">{formatInline(tLine.substring(4))}</h3>;
+                if (tLine.startsWith('## ')) return <h2 key={index} className="text-xl font-black text-slate-800 mt-8 mb-3">{formatInline(tLine.substring(3))}</h2>;
+                if (tLine.startsWith('# ')) return <h1 key={index} className="text-2xl font-black text-slate-900 mt-8 mb-4 border-b border-gray-200 pb-2">{formatInline(tLine.substring(2))}</h1>;
+                
+                // Bullet Lists
+                if (tLine.startsWith('- ')) return <div key={index} className="flex items-start gap-2 ml-4 mt-2 mb-2"><span className="text-slate-400 mt-0.5 font-black">•</span><span className="flex-1 font-bold text-slate-700">{formatInline(tLine.substring(2))}</span></div>;
+                
+                // Numbered Lists (例如 "1. **[Title]**:")
+                if (tLine.match(/^\d+\.\s/)) {
+                    return <div key={index} className="mt-5 mb-2 font-black text-slate-800 text-base leading-relaxed">{formatInline(tLine)}</div>;
+                }
+
+                // Empty lines
+                if (tLine === '') return <div key={index} className="h-3"></div>;
+                
+                // Regular Paragraph
+                return <p key={index} className="mb-2 leading-relaxed text-slate-700 font-bold">{formatInline(line)}</p>;
+            });
+        };
+
+        function ResultDashboard({ answers, config, candidateInfo, showToast, isCampusMode, duration }) {
             const [aiReportContent, setAiReportContent] = useState('');
             const [isEditingReport, setIsEditingReport] = useState(true);
 
-            // Common data string for all prompts
+            const formatDuration = (secs) => {
+                if (secs === null || secs === undefined) return '未記錄';
+                const m = Math.floor(secs / 60); const s = secs % 60; return `${m}分 ${s}秒`;
+            };
+
+            // --- SYSTEM RELIABILITY CALCULATION (Campus Mode Only) ---
+            const reliabilityResults = useMemo(() => {
+                if (!isCampusMode) return null;
+                const reasons = []; let score = 100;
+                const moduleCount = config.modules.length;
+                if (duration < moduleCount * 10) { score -= 40; reasons.push(`⚡ 作答速度極快 (平均單模組不到10秒)，疑似未經思考亂填。`); } 
+                else if (duration < moduleCount * 25) { score -= 15; reasons.push(`🏃 作答速度較快，請留意是否有快速掃視而未詳讀題目的情況。`); }
+
+                if (answers.big5) {
+                    const vals = Object.values(answers.big5);
+                    if (vals.every(v => v >= 12)) { score -= 20; reasons.push(`🌟 大五人格所有指標皆極高，可能有「社會期許誤差」，刻意表現出完美形象。`); }
+                }
+                if (answers.traits && answers.disc) {
+                    const traitsCount = answers.traits.length;
+                    if (traitsCount > 30) { score -= 10; reasons.push(`✅ 勾選特質過多 (${traitsCount}/35)，受測者可能對自我認知較模糊或過於自信。`); } 
+                    else if (traitsCount < 5) { score -= 10; reasons.push(`❌ 勾選特質過少 (${traitsCount}/35)，受測者可能防備心較重或缺乏自信。`); }
+                    if (answers.traits.includes("我有條理") && (answers.disc.C || 0) < 1) { score -= 5; reasons.push(`⚠️ 矛盾點：自認「有條理」但行為風格中「C」得分極低。`); }
+                    if (answers.traits.includes("我會採取主動") && (answers.disc.D || 0) < 1) { score -= 5; reasons.push(`⚠️ 矛盾點：自認「採取主動」但行為風格中「D」得分極低。`); }
+                }
+                let status = "高"; let color = "text-emerald-700 bg-emerald-50 border-emerald-200";
+                if (score < 60) { status = "低 (不具參考價值)"; color = "text-rose-700 bg-rose-50 border-rose-200"; } 
+                else if (score < 85) { status = "中 (需面試複核)"; color = "text-amber-700 bg-amber-50 border-amber-200"; }
+                return { score, status, color, reasons };
+            }, [answers, duration, config, isCampusMode]);
+
             const candidateDataStr = `
 1. DISC: ${JSON.stringify(answers.disc || {})}
 2. 工作價值觀: ${JSON.stringify(answers.values || {})}
 3. 驅動力 (Outcomes): ${answers.outcomes ? answers.outcomes.map((x)=>x.term).join(', ') : 'N/A'}
 4. 特質檢核 (Traits): ${answers.traits?.join(', ')}
 5. 九型人格: ${JSON.stringify(answers.enneagram || {})}
-6. 大五人格 (OCEAN): ${JSON.stringify(answers.big5 || {})}
-7. Holland (RIASEC): ${JSON.stringify(answers.holland || {})}
+6. 大五人格: ${JSON.stringify(answers.big5 || {})}
+7. Holland: ${JSON.stringify(answers.holland || {})}
 `.trim();
 
-            const getInsuranceAgentPrompt = () => {
-                return `
-# 專業保險業務潛能評估報告 (面試官版)
-角色: 擁有 20 年經驗的頂尖保險經紀人公司 (保經) 處經理與組織心理學家。
-任務: 分析候選人 ${candidateInfo.name} 的測驗數據，評估其成為「百萬圓桌 (MDRT) 保險業務員」的潛力。
-## 候選人數據
-${candidateDataStr}
-## 輸出格式 (Markdown) - 請直接輸出以下結構：
-1. **[銷售潛力總結]**: 用保險業的語言（如：開發型/經營型/孤兒保單殺手）定義其風格。
-2. **[保經 vs. 保險員 適配分析]**: 
-   - 他更適合「單一保險公司」(制度嚴謹) 還是「保險經紀人」(商品多元、自主性高)？
-   - 分析其對「多商品比較與組合」的邏輯能力 (High C/S) 與「陌生開發」的抗壓性 (High D/I)。
-3. **[MDRT 潛質分析]**: 交叉分析數據，評估其「抗壓性」、「客戶連結力」與「自律性」。
-4. **[致命傷預警]**: 在保險銷售這條路上，他最容易因為什麼原因陣亡？
-5. **[留任風險與激勵因子]**: 他是為了什麼而戰？主管該如何餵養他的慾望？
-6. **[黃金 90 天定著策略]**: 針對其性格，提供前三個月的具體輔導重點。
-7. **[增員成交 (Closing) 戰術]**:
-   - **關鍵誘因**: 針對其核心驅動力，指出最能打動他的「職涯願景」。
-   - **預判拒絕**: 他最可能因為什麼原因猶豫？提供化解話術。
-`.trim();
-            };
+            const mandatoryOutputFormat = `## 輸出格式 (Markdown)\n⚠️ 非常重要：請務必將您產出的「整份最終報告內容」完全包裝在一個純文字程式碼區塊中 (也就是在開頭加上 \`\`\`text ，在結尾加上 \`\`\`)。請依照以下結構輸出：`;
 
-            const getCandidatePrompt = () => {
-                return `
-# 個人職涯探索與天賦分析報告 (受測者專屬)
-角色: 你的專屬生涯教練 (Career Coach) 與心理諮商師。
-任務: 根據以下測驗數據，協助 ${candidateInfo.name} 深度認識自己，並探索最適合的職涯賽道。
+            // Common Prompt
+            const getCandidatePrompt = () => `
+# 個人職涯探索與天賦分析報告
+角色: 你的專屬生涯教練與心理諮商師。任務: 協助 ${candidateInfo.name} 深度認識自己，探索職涯。
+請「完全且僅能」基於下方的測驗數據分析，不受過往對話影響。
 ## 你的測驗數據
 ${candidateDataStr}
-## 輸出格式 (Markdown)：
-1. **[深層自我察覺 (Who You Are)]**:
-   - 綜合分析你的性格 DNA，你是誰？你內在最渴望什麼？
-   - 指出你可能沒發現的「隱藏天賦」與「獨特優勢」。
-2. **[你的職場定位 (Where You Fit)]**:
-   - 根據 Holland 與工作價值觀，具體描述你適合的「工作型態」與「文化氛圍」。
-   - 你是適合衝鋒陷陣的戰將？還是運籌帷幄的幕僚？亦或是溫暖人心的支持者？
-3. **[具體職涯方向建議 (Career Path)]**:
-   - 請列出 3 個最適合你的職業領域或具體職位，並說明原因。
-   - **特別標註**：這些工作如何滿足你的核心驅動力？
-4. **[給未來的成長備忘錄 (Growth Notes)]**:
-   - 在追求理想工作的路上，你可能會遇到什麼心理障礙？該如何克服？
-   - 針對你的性格弱點，提供一個具體的「原子習慣」建議。
-5. **[精選學習資源]**: 推薦 1 本書或 1 個觀念，作為你現階段的成長禮物。
+${mandatoryOutputFormat}
+1. **[深層自我察覺]**: 綜合分析性格 DNA，隱藏天賦。
+2. **[職場定位]**: 適合的「工作型態」與「文化氛圍」。
+3. **[職涯方向建議]**: 3 個最適合的職業/職位及原因。
+4. **[成長備忘錄]**: 心理障礙克服與原子習慣建議。
 `.trim();
-            };
 
-            const getSalesAssistantPrompt = () => {
-                return `
-# 業務助理 (Sales Assistant) 適配性評估報告
-角色: 資深行政主管與 HR 專家。
-任務: 評估候選人 ${candidateInfo.name} 是否適合擔任「高壓業務團隊」的後勤助理。
-## 候選人數據
+            // Campus AI Prompts
+            const getCampusAgentPrompt = () => `
+# 專業保險業務潛能評估報告 (校園版)
+角色: 頂尖保險業主管。任務: 分析 ${candidateInfo.name} 的潛力。
+請「完全且僅能」基於下方測驗數據分析。
+## 數據
+- 系統預判可信度: ${reliabilityResults?.status}
 ${candidateDataStr}
-## 輸出格式 (Markdown)：
-1. **[行政細心度與穩定性]**:
-   - 分析其 C (謹慎) 與 S (穩健) 分數，評估處理繁瑣文件、報表與流程的耐心與精確度。
-   - 在 Holland (C 事務型) 與 Traits 中是否有足夠的證據支持？
-2. **[業務支援能力]**:
-   - 當業務在外衝刺時，他是否具備足夠的 I (影響) 或 S (穩健) 特質來安撫客戶或協助溝通？
-   - 評估其「服務熱忱」與「解決問題」的主動性。
-3. **[管理風格適配]**:
-   - 什麼樣的業務主管 (D/I/S/C) 最適合帶他？什麼樣的主管會讓他崩潰？
-4. **[潛在風險]**:
-   - 他是否會因為工作內容過於重複而感到厭倦 (High I/D)？
-   - 面對業務單位的快節奏與業績壓力，他的抗壓性如何？
+${mandatoryOutputFormat}
+1. **[銷售潛力總結]**: 定義其風格。
+2. **[保險業適配度]**: 面對拒絕的挫折力與經營耐心。
+3. **[MDRT 潛質]**: 評估抗壓、連結力、自律。
+4. **[致命傷與激勵因子]**: 陣亡原因與激勵誘因。
+5. **[增員成交戰術]**: 打動他的願景與預判拒絕的化解話術。
 `.trim();
-            };
 
-            const getAssistantToAgentPrompt = () => {
-                return `
-# 時薪助理轉型保險業務 - 潛能發掘與引導話術
-角色: 慧眼識英雄的王牌通訊處經理。
-任務: 雖然 ${candidateInfo.name} 目前應徵/擔任的是「時薪助理」，但請從數據中挖掘其「隱藏的業務天賦」，並設計一套話術說服他挑戰「百萬年薪業務」。
-## 候選人數據
+            const getReliabilityPrompt = () => `
+# 測驗信效度與作答真實性分析
+角色: 行為分析專家。評估 ${candidateInfo.name} 的真實作答情況。
+請「完全且僅能」基於測驗數據。
+## 數據
+- 作答時間: ${formatDuration(duration)}
 ${candidateDataStr}
-## 輸出格式 (Markdown)：
-1. **[被埋沒的業務天賦]**:
-   - 不要看他現在做什麼，要看他的性格 (DISC/Traits) 適合做什麼。
-   - 指出他性格中適合做業務的「亮點」（例如：High S 的人適合做信任感銷售，High C 的人適合做顧問式銷售）。
-2. **[為何他不該只做助理？]**:
-   - 分析其價值觀與驅動力，指出「固定薪資/行政工作」將如何限制他的發展與滿足感。
-   - 點出他未來可能會對助理工作感到乏味或懷才不遇的具體原因。
-3. **[推坑轉型劇本 (The Pitch)]**:
-   - **開場白**: "其實我看你的測驗結果，我發現你比我更像超級業務員..." (請根據性格客製化)
-   - **消除恐懼**: 針對他性格中最害怕的部分 (例如：怕被拒絕、怕不穩定)，提供具體的安撫邏輯。
-   - **願景描繪**: 結合他的 Outcomes (如：自由、賺錢、助人)，描繪轉型後的具體好處。
-4. **[Action Plan]**: 建議如何讓他以「助理身分」開始接觸業務工作（例如：先從協助填寫保單開始，轉變為協助解說條款），達成無痛轉型。
+${mandatoryOutputFormat}
+1. **[作答可信度總評]**: (高/中/低)及理由。
+2. **[數據一致性偵測]**: 邏輯衝突點。
+3. **[面試驗證建議]**: 1-2 個尖銳的面試提問。
 `.trim();
-            };
+
+            // Standard AI Prompts
+            const getStandardAgentPrompt = () => `
+# 專業保險業務潛能評估報告
+角色: 保經處經理與組織心理學家。任務: 分析 ${candidateInfo.name} 成為 MDRT 的潛力。
+## 數據
+${candidateDataStr}
+${mandatoryOutputFormat}
+1. **[銷售潛力]**: 風格定義。
+2. **[保經 vs 保險員]**: 單一公司或保經適配。
+3. **[MDRT 潛質]**: 抗壓與自律。
+4. **[留任風險與激勵]**: 誘因。
+5. **[黃金 90 天策略]**: 輔導重點。
+6. **[Closing 戰術]**: 話術。
+`.trim();
+
+            const getSalesAssistantPrompt = () => `
+# 業務助理適配性評估
+角色: HR 專家。評估 ${candidateInfo.name} 是否適合高壓業務助理。
+## 數據
+${candidateDataStr}
+${mandatoryOutputFormat}
+1. **[行政細心與穩定]**: 耐心與精確度。
+2. **[業務支援]**: 安撫客戶、溝通能力。
+3. **[管理適配]**: 哪種主管適合帶他。
+4. **[潛在風險]**: 抗壓與厭倦度。
+`.trim();
+
+            const getAssistantToAgentPrompt = () => `
+# 助理轉型保險業務 - 潛能引導
+角色: 王牌通訊處經理。任務: 挖掘 ${candidateInfo.name} 的隱藏業務天賦並設計說服話術。
+## 數據
+${candidateDataStr}
+${mandatoryOutputFormat}
+1. **[被埋沒的業務天賦]**: 性格亮點。
+2. **[為何不該只做助理]**: 發展限制。
+3. **[推坑轉型劇本]**: 開場、安撫恐懼、願景描繪。
+`.trim();
 
             const hollandData = answers.holland ? [
-                { label: 'R 實作', value: answers.holland.R || 0, max: 5 },
-                { label: 'I 研究', value: answers.holland.I || 0, max: 5 },
-                { label: 'A 藝術', value: answers.holland.A || 0, max: 5 },
-                { label: 'S 社交', value: answers.holland.S || 0, max: 5 },
-                { label: 'E 企業', value: answers.holland.E || 0, max: 5 },
-                { label: 'C 事務', value: answers.holland.C || 0, max: 5 },
+                { label: 'R', value: answers.holland.R || 0, max: 5 }, { label: 'I', value: answers.holland.I || 0, max: 5 },
+                { label: 'A', value: answers.holland.A || 0, max: 5 }, { label: 'S', value: answers.holland.S || 0, max: 5 },
+                { label: 'E', value: answers.holland.E || 0, max: 5 }, { label: 'C', value: answers.holland.C || 0, max: 5 },
             ] : [];
 
+            // 確保列印與 PDF 輸出的 UI 是一致的，並使用彈跳視窗避免 iFrame 阻擋列印
+            const handlePrintClick = () => {
+                if (isEditingReport) setIsEditingReport(false);
+                setTimeout(() => {
+                    handleSafePrint(showToast, candidateInfo.name);
+                }, 100); // 讓 React 先切換渲染畫面再觸發列印
+            };
+
+            // 使用 html2pdf 生成 PDF 並喚起原生 Share API
+            const handleExportPDF = () => {
+                if (typeof window.html2pdf === 'undefined') {
+                    showToast("PDF 模組載入中，請稍後再試", "error");
+                    return;
+                }
+                if (isEditingReport) setIsEditingReport(false);
+                showToast("正在生成 PDF，請稍候...", "info");
+
+                setTimeout(async () => {
+                    const element = document.getElementById('report-container');
+                    // 加入 PDF 專用 class (模擬列印時的單欄)
+                    element.classList.add('pdf-export-mode');
+
+                    const opt = {
+                        margin:       [0.5, 0.3], // 上下、左右邊距
+                        filename:     `性格分析報告_${candidateInfo.name}.pdf`,
+                        image:        { type: 'jpeg', quality: 0.98 },
+                        html2canvas:  { scale: 2, useCORS: true, windowWidth: 1200 }, 
+                        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+                    };
+
+                    try {
+                        const pdfBlob = await window.html2pdf().set(opt).from(element).outputPdf('blob');
+                        element.classList.remove('pdf-export-mode');
+
+                        const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+                        
+                        // 嘗試喚起系統原生分享 (iOS / Android)
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                title: opt.filename,
+                                text: '請查閱性格分析報告',
+                                files: [file]
+                            });
+                            showToast("分享畫面已開啟", "success");
+                        } else {
+                            // 若不支援分享（如電腦瀏覽器），則直接下載
+                            const url = URL.createObjectURL(file);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = opt.filename;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            showToast("已下載 PDF", "success");
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        element.classList.remove('pdf-export-mode');
+                        showToast("輸出 PDF 失敗", "error");
+                    }
+                }, 300);
+            };
+
             return (
-                <div className="pb-32 animate-fade-in">
-                <div id="report-container" className="bg-white md:p-12 p-8 rounded-lg shadow-lg border border-gray-200 max-w-4xl mx-auto space-y-12">
+                <div className={`pb-40 ${isCampusMode ? 'md:pb-32' : 'pb-32'} animate-fade-in`}>
+                <div id="report-container" className={`bg-white ${isCampusMode ? 'p-5 sm:p-8 md:p-12 rounded-xl' : 'md:p-12 p-8 rounded-lg'} shadow-lg border border-gray-200 max-w-4xl mx-auto space-y-10`}>
                     
-                    <div className="flex justify-between items-end border-b-2 border-slate-900 pb-6">
-                    <div><h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">性格分析報告</h1><p className="text-slate-500 font-semibold text-sm">Personality Analysis Report</p></div>
-                    <div className="text-right text-sm text-slate-600"><div className="text-xl font-bold text-slate-900 mb-1">{candidateInfo.name}</div><div className="flex items-center justify-end gap-1"><Calendar size={14}/> {candidateInfo.dob}</div></div>
+                    {/* Header */}
+                    <div className="flex justify-between items-end border-b-4 border-slate-900 pb-6">
+                        <div>
+                            <h1 className={`${isCampusMode ? 'text-2xl sm:text-3xl' : 'text-3xl'} font-black text-slate-900 tracking-tight`}>性格分析報告</h1>
+                            <p className="text-slate-500 font-extrabold text-xs sm:text-sm mt-1">Personality Analysis Report</p>
+                        </div>
+                        <div className="text-right text-sm text-slate-600">
+                            <div className="text-2xl font-black text-slate-900 mb-1">{candidateInfo.name}</div>
+                            <div className={`flex ${isCampusMode ? 'flex-col sm:flex-row sm:items-center mt-2 font-bold' : 'items-center gap-1'} justify-end text-xs text-slate-500`}>
+                                <div className="flex items-center justify-end gap-1"><Calendar size={14}/> {candidateInfo.dob}</div>
+                                {isCampusMode && <div className="flex items-center justify-end gap-1 sm:ml-4 bg-slate-100 px-2 py-1 rounded-md"><Clock size={14}/> 作答時間: {formatDuration(duration)}</div>}
+                            </div>
+                        </div>
                     </div>
 
-                    {/* 1. DISC */}
-                    {answers.disc && (
-                    <section className="card">
-                        <h3 className="text-lg font-bold text-slate-800 border-l-4 border-blue-800 pl-3 mb-6">1. DISC 風格</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {['D','I','S','C'].map(type => (
-                            <div key={type} className="flex flex-col h-full bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-                            <div className="p-4 text-center border-b border-gray-200 bg-white">
-                                <div className="text-3xl font-black text-slate-800 mb-1">{answers.disc[type] || 0}</div>
-                                <div className="font-bold text-blue-800 text-lg">{type} {DISC_ANIMALS[type].animal}</div>
-                                <div className="text-xs text-slate-500 mt-1 font-bold">{DISC_ANIMALS[type].type}</div>
-                            </div>
-                            <div className="p-3 text-xs text-slate-600 bg-gray-50 flex-1 flex flex-col justify-center text-center">
-                                <p className="font-bold mb-1 text-slate-700">{DISC_ANIMALS[type].traits}</p>
-                                <p className="opacity-80 leading-relaxed">{DISC_ANIMALS[type].desc}</p>
-                            </div>
-                            </div>
-                        ))}
-                        </div>
-                    </section>
-                    )}
-
-                    {/* 2. ENNEAGRAM */}
-                    {answers.enneagram && (
-                    <section className="card">
-                        <h3 className="text-lg font-bold text-slate-800 border-l-4 border-rose-800 pl-3 mb-6">2. 九型人格 (Top 3)</h3>
-                        <div className="flex flex-wrap gap-2">
-                        {Object.entries(answers.enneagram).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([type, score], i) => (
-                            <div key={type} className="flex-1 min-w-[120px] bg-rose-50 p-4 rounded-lg border border-rose-100">
-                            <div className="font-bold text-rose-900 text-lg mb-1">{ENNEAGRAM_TYPES[type].name}</div>
-                            <div className="text-xs text-rose-700 font-bold">{ENNEAGRAM_TYPES[type].desc}</div>
-                            <div className="text-sm text-slate-500 mt-2">得分: {score}</div>
-                            </div>
-                        ))}
-                        </div>
-                    </section>
-                    )}
-
-                    {/* 3. BIG FIVE */}
-                    {answers.big5 && (
-                    <section className="card">
-                        <h3 className="text-lg font-bold text-slate-800 border-l-4 border-sky-800 pl-3 mb-6">3. 大五人格 (OCEAN)</h3>
-                        <div className="space-y-3">
-                        {Object.entries(answers.big5).map(([dim, score]) => (
-                            <div key={dim} className="flex items-center gap-3">
-                            <div className="w-16 font-bold text-slate-700 text-xs text-right">{BIG5_LABELS[dim].name.split(' ')[0]}</div>
-                            <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden relative group">
-                                <div className="bg-sky-700 h-full" style={{width: `${(score/14)*100}%`}}></div>
-                            </div>
-                            <div className="w-6 text-xs text-slate-500">{score}</div>
-                            </div>
-                        ))}
-                        </div>
-                    </section>
-                    )}
-
-                    {/* 4. HOLLAND */}
-                    {answers.holland && (
-                    <section className="card">
-                        <h3 className="text-lg font-bold text-slate-800 border-l-4 border-orange-800 pl-3 mb-6">4. Holland 職業興趣</h3>
-                        <div className="flex flex-col md:flex-row items-center gap-8">
-                        <div className="flex-1 flex justify-center">
-                            <RadarChart data={hollandData} size={250} color="#ea580c" />
-                        </div>
-                        <div className="flex-1 w-full">
-                            <div className="grid grid-cols-3 gap-2 mb-4">
-                            {Object.entries(answers.holland).sort((a,b)=>b[1]-a[1]).map(([type, score]) => (
-                                <div key={type} className="bg-orange-50 rounded-lg p-2 text-center border border-orange-100">
-                                <div className="font-bold text-orange-900 text-sm mb-1">{HOLLAND_LABELS[type].name.split(' ')[0]}</div>
-                                <div className="text-xl font-black text-orange-700">{score}</div>
+                    {/* 主要報告內容區塊 */}
+                    <div className="space-y-10">
+                        {answers.disc && (
+                        <section className="card">
+                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-blue-800 pl-3 mb-6">1. DISC 風格</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {['D','I','S','C'].map(type => (
+                                <div key={type} className="flex flex-col h-full bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                                <div className="p-4 text-center border-b border-gray-200 bg-white">
+                                    <div className="text-4xl font-black text-slate-800 mb-1">{answers.disc[type] || 0}</div>
+                                    <div className="font-extrabold text-blue-800 text-lg">{type} {DISC_ANIMALS[type].animal}</div>
+                                    <div className="text-xs text-slate-500 mt-1 font-bold">{DISC_ANIMALS[type].type}</div>
+                                </div>
+                                <div className="p-4 text-xs text-slate-700 bg-gray-50 flex-1 flex flex-col justify-center text-center">
+                                    <p className="font-extrabold mb-1 text-slate-800">{DISC_ANIMALS[type].traits}</p>
+                                    <p className={`opacity-80 leading-relaxed font-bold ${isCampusMode ? 'hidden sm:block' : ''}`}>{DISC_ANIMALS[type].desc}</p>
+                                </div>
                                 </div>
                             ))}
                             </div>
-                            <div className="text-sm text-slate-600 font-bold bg-orange-50/50 p-3 rounded-lg border border-orange-100 text-center">
-                            您的 Holland 代碼: <span className="text-xl text-orange-700 ml-2">{Object.entries(answers.holland).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>x[0]).join('')}</span>
-                            </div>
-                        </div>
-                        </div>
-                    </section>
-                    )}
+                        </section>
+                        )}
 
-                    {/* 5. VALUES */}
-                    {answers.values && (
-                    <section className="card">
-                        <h3 className="text-lg font-bold text-slate-800 border-l-4 border-indigo-800 pl-3 mb-6">5. 工作價值觀 (完整排序)</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {Object.entries(answers.values).sort((a,b)=>b[1]-a[1]).map(([k,v], i) => (
-                            <div key={k} className={`flex items-center gap-2 px-3 py-2 rounded-md border ${i < 3 ? 'bg-indigo-50 border-indigo-200 text-indigo-900 font-bold' : 'bg-white border-slate-100 text-slate-600'}`}>
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${i < 3 ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-400'}`}>{i + 1}</div>
-                            <span className="text-sm">{k} ({v})</span>
-                            </div>
-                        ))}
-                        </div>
-                    </section>
-                    )}
-
-                    {/* 6. OUTCOMES */}
-                    {answers.outcomes && (
-                    <section className="card">
-                        <h3 className="text-lg font-bold text-slate-800 border-l-4 border-emerald-800 pl-3 mb-6">6. 核心驅動力 (Outcomes 完整排序)</h3>
-                        <div className="space-y-3">
-                        {answers.outcomes.map((item, i) => (
-                            <div key={item.id} className={`flex items-start gap-3 p-3 rounded-md border transition-all ${i < 3 ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-100'}`}>
-                            <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${i === 0 ? 'bg-yellow-100 text-yellow-800 ring-2 ring-yellow-200' : i === 1 ? 'bg-gray-200 text-slate-700 ring-2 ring-gray-300' : i === 2 ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-200' : 'bg-white text-slate-400 border border-gray-200'}`}>
-                                {i+1}
-                            </div>
-                            <div>
-                                <span className={`text-sm font-bold block mb-1 ${i < 3 ? 'text-emerald-900' : 'text-slate-800'}`}>
-                                {item.term}
-                                </span>
-                                <span className={`text-xs block leading-relaxed ${i < 3 ? 'text-emerald-700' : 'text-slate-500'}`}>
-                                {item.desc}
-                                </span>
-                            </div>
-                            </div>
-                        ))}
-                        </div>
-                    </section>
-                    )}
-
-                    {/* 7. TRAITS */}
-                    {answers.traits && (
-                    <section className="card">
-                        <h3 className="text-lg font-bold text-slate-800 border-l-4 border-purple-800 pl-3 mb-6">7. 成功特質檢核 (全 35 項)</h3>
-                        
-                        <div className="mb-6">
-                        <h4 className="text-sm font-bold text-emerald-700 mb-3 flex items-center gap-2"><CheckCircle size={18}/> 您認為您具備的特質 ({answers.traits.length})</h4>
-                        <div className="flex flex-wrap gap-2">
-                            {answers.traits.map((t) => (
-                            <span key={t} className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-md text-xs font-bold shadow-sm">{t}</span>
+                        {answers.enneagram && (
+                        <section className="card">
+                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-rose-800 pl-3 mb-6">2. 九型人格 (Top 3)</h3>
+                            <div className={`grid ${isCampusMode ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-3'} gap-3`}>
+                            {Object.entries(answers.enneagram).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([type, score]) => (
+                                <div key={type} className="bg-rose-50 p-5 rounded-lg border border-rose-200 flex flex-row sm:flex-col justify-between items-center sm:items-start">
+                                <div>
+                                    <div className="font-black text-rose-900 text-lg mb-1">{ENNEAGRAM_TYPES[type].name}</div>
+                                    <div className="text-sm text-rose-700 font-extrabold">{ENNEAGRAM_TYPES[type].desc}</div>
+                                </div>
+                                <div className="text-sm font-black text-rose-900 bg-white px-3 py-1 rounded-full border border-rose-200 sm:mt-4">得分: {score}</div>
+                                </div>
                             ))}
-                        </div>
-                        </div>
+                            </div>
+                        </section>
+                        )}
 
-                        <div className="opacity-75">
-                        <h4 className="text-sm font-bold text-slate-500 mb-3 flex items-center gap-2"><HelpCircle size={18}/> 未勾選項目 / 潛在盲點 ({TRAITS_LIST.length - answers.traits.length})</h4>
-                        <div className="flex flex-wrap gap-2">
-                            {TRAITS_LIST.filter(t => !answers.traits.includes(t)).map(t => (
-                            <span key={t} className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-400 rounded-md text-xs">{t}</span>
+                        {answers.big5 && (
+                        <section className="card">
+                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-sky-800 pl-3 mb-6">3. 大五人格 (OCEAN)</h3>
+                            <div className="space-y-4 bg-gray-50 p-6 rounded-lg border border-gray-200">
+                            {Object.entries(answers.big5).map(([dim, score]) => (
+                                <div key={dim} className="flex items-center gap-3">
+                                <div className="w-16 font-extrabold text-slate-700 text-right text-sm sm:text-base">{BIG5_LABELS[dim].name.split(' ')[0]}</div>
+                                <div className="flex-1 bg-white rounded-full h-4 border border-gray-300 shadow-inner overflow-hidden relative group">
+                                    <div className="bg-sky-600 transition-all duration-1000 rounded-full h-full" style={{width: `${(score/14)*100}%`}}></div>
+                                </div>
+                                <div className="w-6 text-base font-black text-slate-800">{score}</div>
+                                </div>
                             ))}
-                        </div>
-                        </div>
-                    </section>
-                    )}
+                            </div>
+                        </section>
+                        )}
 
-                    {/* 8. AI REPORT */}
+                        {answers.holland && (
+                        <section className="card">
+                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-orange-800 pl-3 mb-6">4. Holland 職業興趣</h3>
+                            <div className="flex flex-col md:flex-row items-center gap-8">
+                            <div className="flex-1 flex justify-center"><RadarChart data={hollandData} size={250} color="#ea580c" /></div>
+                            <div className="flex-1 w-full">
+                                <div className="grid grid-cols-3 gap-3 mb-5">
+                                {Object.entries(answers.holland).sort((a,b)=>b[1]-a[1]).map(([type, score]) => (
+                                    <div key={type} className="bg-orange-50 rounded-lg text-center border border-orange-200 p-3 sm:p-4">
+                                    <div className="font-extrabold text-orange-900 text-sm mb-1">{HOLLAND_LABELS[type].name.split(' ')[0]}</div>
+                                    <div className="text-2xl sm:text-3xl font-black text-orange-700">{score}</div>
+                                    </div>
+                                ))}
+                                </div>
+                                <div className="text-base text-slate-700 font-extrabold bg-orange-50/50 rounded-lg border border-orange-200 text-center p-5">
+                                您的 Holland 代碼: <span className="text-2xl sm:text-3xl tracking-widest text-orange-700 ml-2 font-black">{Object.entries(answers.holland).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>x[0]).join('')}</span>
+                                </div>
+                            </div>
+                            </div>
+                        </section>
+                        )}
+
+                        {answers.values && (
+                        <section className="card">
+                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-indigo-800 pl-3 mb-6">5. 工作價值觀 (完整排序)</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {Object.entries(answers.values).sort((a,b)=>b[1]-a[1]).map(([k,v], i) => (
+                                <div key={k} className={`flex items-center justify-between px-5 py-4 rounded-lg shadow-sm border ${i < 3 ? 'bg-indigo-50 border-indigo-300 text-indigo-900 font-black' : 'bg-white border-slate-200 text-slate-700 font-bold'}`}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`flex items-center justify-center text-sm font-black w-8 h-8 rounded-full ${i < 3 ? 'bg-indigo-200 text-indigo-900' : 'bg-slate-200 text-slate-600'}`}>{i + 1}</div>
+                                    <span className="text-base sm:text-lg">{k}</span>
+                                </div>
+                                <span className="text-sm font-bold opacity-60">分數: {v}</span>
+                                </div>
+                            ))}
+                            </div>
+                        </section>
+                        )}
+
+                        {answers.outcomes && (
+                        <section className="card">
+                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-emerald-800 pl-3 mb-6">6. 核心驅動力 (Outcomes)</h3>
+                            <div className="space-y-4">
+                            {answers.outcomes.map((item, i) => (
+                                <div key={item.id} className={`flex items-start gap-4 p-5 rounded-lg border transition-all ${i < 3 ? 'bg-emerald-50 border-emerald-300 shadow-sm' : 'bg-white border-gray-200'}`}>
+                                <div className={`flex items-center justify-center text-base font-black shrink-0 mt-0.5 w-8 h-8 rounded-md ${i === 0 ? 'bg-yellow-100 text-yellow-800 ring-2 ring-yellow-300' : i === 1 ? 'bg-gray-200 text-slate-800 ring-2 ring-gray-400' : i === 2 ? 'bg-amber-100 text-amber-900 ring-2 ring-amber-300' : 'bg-white text-slate-500 border-2 border-gray-300'}`}>
+                                    {i+1}
+                                </div>
+                                <div>
+                                    <span className={`font-black block text-lg mb-1.5 ${i < 3 ? 'text-emerald-900' : 'text-slate-900'}`}>{item.term}</span>
+                                    <span className={`block leading-relaxed font-bold text-sm ${i < 3 ? 'text-emerald-800' : 'text-slate-600'}`}>{item.desc}</span>
+                                </div>
+                                </div>
+                            ))}
+                            </div>
+                        </section>
+                        )}
+
+                        {answers.traits && (
+                        <section className="card">
+                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-purple-800 pl-3 mb-6">7. 成功特質檢核</h3>
+                            <div className="mb-8">
+                            <h4 className="text-lg mb-5 font-black text-emerald-800 flex items-center gap-2"><CheckCircle size={24}/> 您認為您具備的特質 ({answers.traits.length})</h4>
+                            <div className="flex flex-wrap gap-3">
+                                {answers.traits.map((t) => (
+                                <span key={t} className="bg-emerald-50 border border-emerald-300 text-emerald-900 font-extrabold shadow-sm px-4 py-2.5 rounded-lg text-base">{t}</span>
+                                ))}
+                            </div>
+                            </div>
+                            <div className="opacity-80 bg-slate-50 p-6 rounded-xl border border-slate-200">
+                            <h4 className="text-base font-extrabold text-slate-600 mb-4 flex items-center gap-2"><HelpCircle size={20}/> 未勾選項目 / 潛在盲點 ({TRAITS_LIST.length - answers.traits.length})</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {TRAITS_LIST.filter(t => !answers.traits.includes(t)).map(t => (
+                                <span key={t} className="px-3 py-1.5 bg-white border border-slate-300 text-slate-500 font-bold rounded-md text-sm">{t}</span>
+                                ))}
+                            </div>
+                            </div>
+                        </section>
+                        )}
+
+                        {isCampusMode && reliabilityResults && (
+                        <section className="card no-print">
+                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-rose-700 pl-3 mb-6 flex items-center gap-2">
+                                <Fingerprint size={24} className="text-rose-700" /> 系統作答真實性評估
+                            </h3>
+                            <div className={`p-6 rounded-xl border-2 ${reliabilityResults.color} animate-fade-in`}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 rounded-full bg-white shadow-sm"><ShieldAlert size={28} /></div>
+                                        <div>
+                                            <div className="text-xs font-black opacity-70 uppercase tracking-widest">可靠度等級</div>
+                                            <div className="text-2xl font-black">{reliabilityResults.status}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-xs font-black opacity-70">信任指數</div>
+                                        <div className="text-3xl font-black">{reliabilityResults.score}%</div>
+                                    </div>
+                                </div>
+                                {reliabilityResults.reasons.length > 0 ? (
+                                    <div className="space-y-3 mt-5 pt-5 border-t border-current border-opacity-20">
+                                        <p className="text-sm font-black mb-2 opacity-90">系統偵測到以下異常因子：</p>
+                                        {reliabilityResults.reasons.map((r, i) => (
+                                            <div key={i} className="text-base flex items-start gap-2 font-bold">
+                                                <Zap size={18} className="mt-0.5 shrink-0" /><span>{r}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-base font-bold flex items-center gap-2 mt-5 pt-5 border-t border-current border-opacity-20 opacity-90">
+                                        <CheckCircle size={20} /> 數據表現一致且作答時間合理，具備極高參考價值。
+                                    </div>
+                                )}
+                            </div>
+                            <p className="mt-4 text-xs text-slate-500 font-bold text-center">本報告由系統演算法自動產生，僅供面試初步篩選參考。</p>
+                        </section>
+                        )}
+                    </div>
+
                     <section className="card page-break-before">
-                    <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
-                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <Brain size={20} className="text-slate-700"/> 8. AI 深度分析報告
-                        </h3>
-                        <button 
-                        onClick={() => setIsEditingReport(!isEditingReport)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-bold transition-colors no-print ${isEditingReport ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-slate-600 hover:bg-gray-200'}`}
-                        >
-                        {isEditingReport ? <><Eye size={16}/> 預覽列印模式</> : <><Edit3 size={16}/> 編輯模式</>}
+                    <div className="flex items-center justify-between mb-6 border-b border-gray-200 pb-4">
+                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><Brain size={24} className="text-slate-700"/> 8. AI 深度分析報告</h3>
+                        <button onClick={() => setIsEditingReport(!isEditingReport)} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-black transition-colors shadow-sm no-print ${isEditingReport ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
+                        {isEditingReport ? <><Eye size={18}/> 預覽渲染</> : <><Edit3 size={18}/> 編輯模式</>}
                         </button>
                     </div>
-                        
                     {isEditingReport ? (
-                        <div className="space-y-2 no-print">
-                        <textarea 
-                            className="w-full h-96 p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-200 focus:border-slate-400 outline-none text-slate-700 leading-relaxed font-mono text-sm"
-                            placeholder="請在此貼上 ChatGPT 生成的分析報告..."
-                            value={aiReportContent}
-                            onChange={(e) => setAiReportContent(e.target.value)}
-                        ></textarea>
-                        <p className="text-xs text-slate-400 text-right">💡 提示：貼上後請切換至「預覽列印模式」以確認排版。</p>
+                        <div className="space-y-4 no-print">
+                            <div className="flex justify-between items-end">
+                                <p className="text-sm font-bold text-slate-600">💡 提示：複製下方指令後，將 AI 的分析結果貼上至此。</p>
+                                <button onClick={async () => { try { const text = await navigator.clipboard.readText(); if(text) { setAiReportContent(text); showToast("已成功貼上 AI 報告", "success"); } } catch(err) { showToast("請手動長按貼上", "error"); } }} className="flex items-center gap-1.5 text-sm font-bold text-indigo-700 bg-indigo-50 px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm active:scale-95 border border-indigo-200">
+                                    <Clipboard size={16} /> 貼上報告
+                                </button>
+                            </div>
+                            <textarea className={`w-full h-96 p-5 border border-slate-300 ${isCampusMode ? 'rounded-xl shadow-inner' : 'rounded-lg'} focus:ring-4 focus:ring-slate-200 focus:border-slate-800 outline-none text-slate-700 leading-relaxed font-mono text-sm font-bold`} placeholder="請在此貼上內容..." value={aiReportContent} onChange={(e) => setAiReportContent(e.target.value)}></textarea>
                         </div>
                     ) : (
-                        <div className="ai-report-content bg-white p-0 text-slate-700 leading-relaxed whitespace-pre-wrap font-sans text-sm">
-                        {aiReportContent || <span className="text-slate-400 italic">（尚未輸入 AI 分析報告）</span>}
+                        <div className="relative group">
+                            <div className="absolute top-0 right-0 no-print">
+                                <button onClick={() => { if(aiReportContent) { handleCopyText(aiReportContent, () => showToast("已複製", "success")); } else showToast("無內容", "error"); }} className="flex items-center gap-1.5 text-sm font-black text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors shadow-sm active:scale-95"><Copy size={16} /> 複製結果</button>
+                            </div>
+                            {/* MARKDOWN RENDERED CONTENT */}
+                            <div className="ai-report-content bg-white p-0 text-slate-800 mt-2">
+                                {renderMarkdown(aiReportContent)}
+                            </div>
                         </div>
                     )}
                     </section>
                 </div>
 
-                {/* FOOTER ACTIONS - 4 BUTTONS */}
-                <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur border-t border-gray-200 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] z-50 no-print">
-                    <div className="flex justify-center mb-2">
-                        <button onClick={() => { if(isEditingReport) setIsEditingReport(false); setTimeout(() => handleSafePrint(showToast, candidateInfo.name), 100); }} className="w-full md:w-auto min-w-[200px] flex items-center justify-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-md font-bold hover:bg-slate-800 transition-all shadow-md active:scale-95">
-                        <Printer size={18}/> 列印報告
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 lg:flex lg:justify-center gap-2">
-                        <button onClick={() => handleCopyText(getInsuranceAgentPrompt(), () => showToast("保險業務分析指令已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-md font-bold text-xs lg:text-sm hover:bg-slate-200 transition-all active:scale-95 text-center">
-                        <Briefcase size={16} className="text-indigo-600"/> <span>業務潛能分析</span>
-                        </button>
-                        
-                        <button onClick={() => handleCopyText(getCandidatePrompt(), () => showToast("受測者回饋指令已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-md font-bold text-xs lg:text-sm hover:bg-slate-200 transition-all active:scale-95 text-center">
-                        <User size={16} className="text-emerald-600"/> <span>受測者回饋</span>
-                        </button>
-
-                        <button onClick={() => handleCopyText(getSalesAssistantPrompt(), () => showToast("業務助理分析指令已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-md font-bold text-xs lg:text-sm hover:bg-slate-200 transition-all active:scale-95 text-center">
-                        <Users size={16} className="text-orange-600"/> <span>助理適配分析</span>
-                        </button>
-
-                        <button onClick={() => handleCopyText(getAssistantToAgentPrompt(), () => showToast("轉型引導指令已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-2 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-md font-bold text-xs lg:text-sm hover:bg-slate-200 transition-all active:scale-95 text-center">
-                        <TrendingUp size={16} className="text-rose-600"/> <span>助理轉正引導</span>
-                        </button>
-                    </div>
+                <div className={`fixed bottom-0 left-0 right-0 ${isCampusMode ? 'p-3 sm:p-4 shadow-[0_-10px_30px_rgba(0,0,0,0.08)]' : 'p-3 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]'} bg-white/95 backdrop-blur border-t border-gray-200 z-50 no-print`}>
+                    {isCampusMode ? (
+                        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4">
+                            <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar flex items-center gap-2">
+                                <button onClick={() => handleCopyText(getCampusAgentPrompt(), () => showToast("業務潛能分析指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-xl font-black text-sm hover:bg-indigo-100 transition-colors active:scale-95 shadow-sm"><Briefcase size={18}/> 業務潛能分析</button>
+                                <button onClick={() => handleCopyText(getCandidatePrompt(), () => showToast("受測者回饋指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-black text-sm hover:bg-emerald-100 transition-colors active:scale-95 shadow-sm"><User size={18}/> 受測者回饋</button>
+                                <button onClick={() => handleCopyText(getReliabilityPrompt(), () => showToast("真實性深度分析指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl font-black text-sm hover:bg-rose-100 transition-colors active:scale-95 shadow-sm"><Activity size={18}/> 真實性分析</button>
+                            </div>
+                            <div className="flex gap-2 w-full md:w-auto flex-shrink-0">
+                                <button onClick={handleExportPDF} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3.5 bg-indigo-600 text-white rounded-xl font-black text-sm hover:bg-indigo-700 transition-all shadow-md active:scale-95">
+                                    <Download size={20}/> 輸出 PDF
+                                </button>
+                                <button onClick={handlePrintClick} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3.5 bg-slate-900 text-white rounded-xl font-black text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
+                                    <Printer size={20}/> 列印
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="max-w-4xl mx-auto">
+                            <div className="flex justify-center mb-2 sm:mb-3">
+                                <button onClick={handlePrintClick} className="w-full md:w-auto min-w-[240px] flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-lg font-black hover:bg-slate-800 transition-all shadow-md active:scale-95"><Printer size={20}/> 列印報告</button>
+                            </div>
+                            <div className="grid grid-cols-2 lg:flex lg:justify-center gap-2">
+                                <button onClick={() => handleCopyText(getStandardAgentPrompt(), () => showToast("業務分析已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-xs sm:text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm text-center"><Briefcase size={18} className="text-indigo-600"/> <span>業務潛能分析</span></button>
+                                <button onClick={() => handleCopyText(getCandidatePrompt(), () => showToast("受測者回饋已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-xs sm:text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm text-center"><User size={18} className="text-emerald-600"/> <span>受測者回饋</span></button>
+                                <button onClick={() => handleCopyText(getSalesAssistantPrompt(), () => showToast("助理適配分析已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-xs sm:text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm text-center"><Users size={18} className="text-orange-600"/> <span>助理適配分析</span></button>
+                                <button onClick={() => handleCopyText(getAssistantToAgentPrompt(), () => showToast("轉型引導已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-xs sm:text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm text-center"><TrendingUp size={18} className="text-rose-600"/> <span>助理轉正引導</span></button>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 </div>
             );
         }
 
+        // --- CAMPUS SETUP COMPONENT ---
+        function CampusSetup({ candidateInfo, setCandidateInfo, setQuizConfig, setAnswers, setQuizStartTime, setQuizDuration, setView, showToast }) {
+            const [localModules, setLocalModules] = useState({ disc: true, values: true, outcomes: true, traits: true, enneagram: true, big5: true, holland: true });
+            
+            const handleCampusStart = () => {
+                const activeModules = Object.keys(localModules).filter(k => localModules[k]);
+                if (activeModules.length === 0) { showToast("請至少選擇一個測驗模組", "error"); return; }
+                if (!candidateInfo.name.trim()) { showToast("請輸入求職者姓名", "error"); return; }
+                
+                setQuizConfig({ modules: activeModules, timestamp: Date.now() });
+                setAnswers({}); setQuizStartTime(Date.now()); setQuizDuration(null); setView('quiz');
+            };
+
+            // 實作校園版專屬 5下 Demo 彩蛋
+            const [secretClicks, setSecretClicks] = useState(0);
+            const triggerDemo = () => {
+                const nextClicks = secretClicks + 1;
+                setSecretClicks(nextClicks);
+                if (nextClicks === 5) {
+                    setCandidateInfo({ name: '測試員 DEMO (校園)', dob: '1999-01-01' });
+                    setQuizConfig({ modules: MODULES_MAP, timestamp: Date.now() });
+                    setAnswers({ disc: { D: 6, I: 3, S: 1, C: 0 }, values: { "升遷": 5, "成就感": 8, "待遇": 6, "自主性": 2, "環境": 4, "同事": 3, "自我成長": 7 }, outcomes: OUTCOMES_ITEMS.slice(), traits: TRAITS_LIST.slice(0, 10), enneagram: { "1": 1, "2": 0, "3": 5, "4": 0, "5": 1, "6": 2, "7": 4, "8": 3, "9": 1 }, big5: { E: 6, A: 7, C: 8, N: 3, O: 9 }, holland: { R: 2, I: 4, A: 5, S: 3, E: 5, C: 1 } });
+                    setQuizDuration(380); setView('result'); showToast("載入 Demo (校園版)", "success");
+                    setSecretClicks(0);
+                }
+                setTimeout(() => setSecretClicks(prev => Math.max(0, prev - 1)), 1000);
+            };
+
+            return (
+                <div className="bg-white p-6 sm:p-8 md:p-12 rounded-xl shadow-lg border border-gray-200 max-w-2xl mx-auto animate-fade-in">
+                    {/* 把彩蛋綁在標題上 */}
+                    <h2 onClick={triggerDemo} className="text-xl font-black text-slate-800 mb-6 sm:mb-8 text-center bg-slate-50 py-4 rounded-lg border border-slate-200 select-none cursor-pointer">請設定測驗項目並讓求職者填寫資料</h2>
+                    <div className="mb-8 space-y-4">
+                        <div className="flex items-center gap-2 mb-2 text-slate-800 font-black text-lg"><User size={20}/> 受測者資料</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <input type="text" value={candidateInfo.name} onChange={(e) => setCandidateInfo({...candidateInfo, name: e.target.value})} autoComplete="off" className="w-full p-4 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-slate-200 focus:border-slate-800 outline-none transition-all text-lg font-bold placeholder:font-bold bg-gray-50 focus:bg-white" placeholder="請輸入姓名 (必填)" />
+                            <input type="date" value={candidateInfo.dob} onChange={(e) => setCandidateInfo({...candidateInfo, dob: e.target.value})} autoComplete="off" className="w-full p-4 border-2 border-gray-300 rounded-lg focus:ring-4 focus:ring-slate-200 focus:border-slate-800 outline-none transition-all text-slate-700 font-bold bg-gray-50 focus:bg-white" />
+                        </div>
+                    </div>
+                    <div className="mb-10">
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex items-center gap-2 text-slate-800 font-black text-lg"><List size={20}/> 測驗項目</div>
+                            <button onClick={() => setLocalModules({disc: true, values: true, outcomes: true, traits: true, enneagram: true, big5: true, holland: true})} className="text-sm text-indigo-700 hover:text-indigo-900 font-black px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors active:scale-95 bg-indigo-50 border border-indigo-200">全選</button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                            {[{ id: 'disc', label: '1. DISC 行為風格', sub: '溝通與行事作風' }, { id: 'values', label: '2. 工作價值觀', sub: '找尋核心在乎事物' }, { id: 'outcomes', label: '3. Outcomes 驅動力', sub: '深層心理動機' }, { id: 'traits', label: '4. 成功特質檢核', sub: '自信與盲點掃描' }, { id: 'enneagram', label: '5. 九型人格', sub: '核心渴望與恐懼' }, { id: 'big5', label: '6. 大五人格', sub: '穩定性與盡責度' }, { id: 'holland', label: '7. Holland 職業興趣', sub: '適合的任務型態' }].map(m => (
+                            <div key={m.id} onClick={() => setLocalModules({...localModules, [m.id]: !localModules[m.id]})} className={`p-4 sm:p-5 border-2 rounded-xl cursor-pointer transition-all flex justify-between items-center select-none active:scale-95 ${localModules[m.id] ? 'border-slate-800 bg-slate-50 shadow-sm' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                <div><div className={`font-black text-base sm:text-lg ${localModules[m.id] ? 'text-slate-900' : 'text-slate-500'}`}>{m.label}</div><div className="text-sm font-bold text-slate-500 mt-1">{m.sub}</div></div>
+                                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${localModules[m.id] ? 'bg-slate-800 border-slate-800 text-white' : 'border-gray-300 bg-white text-transparent'}`}><CheckCircle size={18} fill="currentColor" className="text-slate-800"/></div>
+                            </div>
+                            ))}
+                        </div>
+                    </div>
+                    <button onClick={handleCampusStart} className="w-full bg-slate-900 text-white font-black text-xl py-5 rounded-xl hover:bg-slate-800 transition-all shadow-lg active:translate-y-1 flex justify-center items-center gap-3">
+                        <Play size={24} fill="currentColor"/> 立即開始測驗
+                    </button>
+                </div>
+            );
+        }
+
+        // --- MAIN APPLICATION ---
         function PersonalityPortal() {
             const [view, setView] = useState('landing');
+            const [systemMode, setSystemMode] = useState('standard'); // 'standard' | 'campus'
+            
             const [isGodMode, setIsGodMode] = useState(false);
             const [godModeClicks, setGodModeClicks] = useState(0);
+            
             const [toast, setToast] = useState({ show: false, msg: '', type: 'info' });
             const [inputCode, setInputCode] = useState('');
             
             const [quizConfig, setQuizConfig] = useState(null);
             const [candidateInfo, setCandidateInfo] = useState({ name: '', dob: '' });
             const [answers, setAnswers] = useState({});
+            
+            const [quizStartTime, setQuizStartTime] = useState(null);
+            const [quizDuration, setQuizDuration] = useState(null);
 
-            // --- AUTO SAVE LOGIC ---
+            // 防呆處理
             useEffect(() => {
-                const saved = localStorage.getItem('pp_autosave');
-                if (saved) {
-                // We don't auto-load to avoid confusion, but we could offer a "Resume" button
-                // For now, we just log it. A production app might show a "Resume" prompt.
-                }
-            }, []);
-
-            // Prevent accidental close
-            useEffect(() => {
-                const handleBeforeUnload = (e) => {
-                if (view === 'quiz') {
-                    e.preventDefault();
-                    e.returnValue = '';
-                }
-                };
-                window.addEventListener('beforeunload', handleBeforeUnload);
-                return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+                const handleBeforeUnload = (e) => { if (view === 'quiz') { e.preventDefault(); e.returnValue = ''; } };
+                window.addEventListener('beforeunload', handleBeforeUnload); return () => window.removeEventListener('beforeunload', handleBeforeUnload);
             }, [view]);
 
             const showToast = (msg, type = 'info') => {
@@ -1221,348 +1268,215 @@ ${candidateDataStr}
             };
 
             const handleLogoClick = () => {
-                if (isGodMode) return;
-                const next = godModeClicks + 1;
-                setGodModeClicks(next);
-                if (next === 5) {
-                setIsGodMode(true);
-                showToast("面試官模式已解鎖", "success");
-                setGodModeClicks(0);
+                const next = godModeClicks + 1; setGodModeClicks(next);
+                if (next === 5) { 
+                    if (systemMode === 'campus') {
+                        // 恢復：校園模式下點 Logo 5下，直接載入 Demo
+                        setCandidateInfo({ name: '測試員 DEMO (校園)', dob: '1999-01-01' });
+                        setQuizConfig({ modules: MODULES_MAP, timestamp: Date.now() });
+                        setAnswers({ disc: { D: 6, I: 3, S: 1, C: 0 }, values: { "升遷": 5, "成就感": 8, "待遇": 6, "自主性": 2, "環境": 4, "同事": 3, "自我成長": 7 }, outcomes: OUTCOMES_ITEMS.slice(), traits: TRAITS_LIST.slice(0, 10), enneagram: { "1": 1, "2": 0, "3": 5, "4": 0, "5": 1, "6": 2, "7": 4, "8": 3, "9": 1 }, big5: { E: 6, A: 7, C: 8, N: 3, O: 9 }, holland: { R: 2, I: 4, A: 5, S: 3, E: 5, C: 1 } });
+                        setQuizDuration(380); setView('result'); showToast("載入 Demo (校園版)", "success");
+                    } else {
+                        if (!isGodMode) {
+                            setIsGodMode(true); showToast("管理員模式已解鎖", "success"); 
+                        }
+                    }
+                    setGodModeClicks(0); 
                 }
+                setTimeout(() => { setGodModeClicks(prev => Math.max(0, prev - 1)); }, 1000);
             };
 
             const handleCodeSubmit = () => {
-                if (!inputCode.trim()) {
-                showToast("請輸入代碼", "error");
-                return;
-                }
+                if (!inputCode.trim()) { showToast("請輸入代碼", "error"); return; }
                 if (inputCode === '1111') {
-                if (!isGodMode) {
-                    showToast("權限不足：請先解鎖面試官模式", "error");
-                    return;
-                }
-                loadDemoData();
-                return;
+                    if (!isGodMode) { showToast("權限不足：請先解鎖管理員模式", "error"); return; }
+                    setQuizConfig({ modules: MODULES_MAP, timestamp: Date.now() });
+                    setCandidateInfo({ name: '測試員 DEMO (標準)', dob: '1995-01-01' });
+                    setAnswers({ disc: { D: 6, I: 3, S: 1, C: 0 }, values: { "升遷": 5, "成就感": 8, "待遇": 6, "自主性": 2, "環境": 4, "同事": 3, "自我成長": 7 }, outcomes: OUTCOMES_ITEMS.slice(), traits: TRAITS_LIST.slice(0, 10), enneagram: { "1": 1, "2": 0, "3": 5, "4": 0, "5": 1, "6": 2, "7": 4, "8": 3, "9": 1 }, big5: { E: 6, A: 7, C: 8, N: 3, O: 9 }, holland: { R: 2, I: 4, A: 5, S: 3, E: 5, C: 1 } });
+                    setView('result'); showToast("Demo 數據已載入", "success"); return;
                 }
                 const data = safeDecode(inputCode);
                 if (data && data.modules) {
-                setQuizConfig(data);
-                const saved = localStorage.getItem('pp_autosave');
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    if (confirm("發現未完成的測驗進度，是否恢復？\n(取消則開始新測驗)")) {
-                    setAnswers(parsed.answers || {});
-                    setCandidateInfo(parsed.candidateInfo || { name: '', dob: '' });
-                    showToast("已恢復上次進度", "success");
-                    } else {
-                    setAnswers({});
-                    setCandidateInfo({ name: '', dob: '' });
-                    localStorage.removeItem('pp_autosave');
-                    }
-                } else {
-                    setAnswers({});
-                    setCandidateInfo({ name: '', dob: '' });
-                }
-                setView('candidate-info');
-                showToast("測驗載入成功", "success");
-                return;
+                    setQuizConfig(data); setAnswers({}); setCandidateInfo({ name: '', dob: '' }); setView('candidate-info'); showToast("測驗載入成功", "success"); return;
                 }
                 if (data && data.answers) {
-                if (!isGodMode) {
-                    showToast("權限不足：僅面試官可查看結果", "error");
-                    return;
-                }
-                setQuizConfig(data.config);
-                setAnswers(data.answers);
-                setCandidateInfo(data.candidate || { name: '未知', dob: '未知' });
-                setView('result');
-                showToast("報告解析成功", "success");
-                return;
+                    if (!isGodMode) { showToast("權限不足：僅面試官可查看結果", "error"); return; }
+                    setQuizConfig(data.config); setAnswers(data.answers); setCandidateInfo(data.candidate || { name: '未知', dob: '未知' }); setView('result'); showToast("報告解析成功", "success"); return;
                 }
                 showToast("無效的代碼格式", "error");
             };
 
-            const loadDemoData = () => {
-                setQuizConfig({ 
-                modules: ['disc', 'values', 'outcomes', 'traits', 'enneagram', 'big5', 'holland'], 
-                timestamp: Date.now() 
-                });
-                setCandidateInfo({ name: '測試員 DEMO', dob: '1995-01-01' });
-                setAnswers({
-                disc: { D: 6, I: 3, S: 1, C: 0 },
-                values: { "升遷": 5, "成就感": 8, "待遇": 6, "自主性": 2, "環境": 4, "同事": 3, "自我成長": 7 },
-                outcomes: OUTCOMES_ITEMS.slice(),
-                traits: TRAITS_LIST.slice(0, 10),
-                enneagram: { "1": 1, "2": 0, "3": 5, "4": 0, "5": 1, "6": 2, "7": 4, "8": 3, "9": 1 },
-                big5: { E: 6, A: 7, C: 8, N: 3, O: 9 },
-                holland: { R: 2, I: 4, A: 5, S: 3, E: 5, C: 1 }
-                });
-                setView('result');
-                showToast("Demo 數據已載入", "success");
+            const enterCampusMode = () => { setSystemMode('campus'); setView('campus-setup'); };
+            
+            const handleCampusReset = () => {
+                if(confirm("確定清除當前資料，迎接下一位求職者？")) {
+                    setCandidateInfo({ name: '', dob: '' }); setAnswers({}); setQuizConfig(null); setQuizStartTime(null); setQuizDuration(null); setView('campus-setup'); window.scrollTo(0, 0);
+                }
             };
 
             return (
-                <div className="min-h-screen bg-gray-50 text-slate-800 font-sans selection:bg-slate-200 selection:text-slate-900" style={{ fontFamily: '"Microsoft JhengHei", "Noto Sans TC", sans-serif' }}>
+                <div className="min-h-screen bg-gray-50 text-slate-800 font-sans font-medium selection:bg-slate-200 selection:text-slate-900">
                 
                 <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm backdrop-blur-md bg-white/95 no-print">
-                    <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-                    <div onClick={handleLogoClick} className="flex items-center gap-2 cursor-pointer select-none group">
-                        <div className={`p-1.5 rounded-md transition-colors ${isGodMode ? 'bg-red-50' : 'bg-slate-100 group-hover:bg-slate-200'}`}>
-                        <Shield className={isGodMode ? 'text-red-500' : 'text-slate-700'} size={20} />
+                    <div className={`max-w-4xl mx-auto px-4 ${systemMode === 'campus' ? 'sm:px-6 h-16 md:h-20' : 'h-14'} flex items-center justify-between`}>
+                        <div className="flex items-center gap-3 sm:gap-4 select-none cursor-pointer group" onClick={handleLogoClick}>
+                            <div className={`p-2 sm:p-2.5 rounded-lg transition-colors shadow-sm ${systemMode === 'campus' ? 'bg-slate-900 text-white' : isGodMode ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-slate-100 text-slate-800 group-hover:bg-slate-200'}`}>
+                                {systemMode === 'campus' ? <Target size={24} className="sm:w-7 sm:h-7" /> : <Shield size={20} />}
+                            </div>
+                            <div>
+                                <h1 className={`font-black ${systemMode === 'campus' ? 'text-lg sm:text-xl mb-1' : 'text-lg'} tracking-tight text-slate-900 leading-none`}>Personality Portal</h1>
+                                {systemMode === 'campus' ? <span className="text-[10px] sm:text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md font-black tracking-widest uppercase border border-indigo-200">Campus Mode</span> : isGodMode && <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-black tracking-wider uppercase">ADMIN</span>}
+                            </div>
                         </div>
-                        <div>
-                        <h1 className="font-bold text-lg tracking-tight text-slate-900 leading-none">Personality Portal</h1>
-                        {isGodMode && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold tracking-wider uppercase">ADMIN</span>}
+                        <div className="flex gap-3">
+                            {systemMode === 'campus' ? (
+                                <>
+                                    {view === 'result' && (
+                                        <button onClick={handleCampusReset} className="text-sm font-black text-slate-700 hover:text-slate-900 transition-colors flex items-center gap-2 bg-slate-100 border border-slate-200 px-4 sm:px-5 py-2.5 rounded-lg active:scale-95 shadow-sm">
+                                            <RefreshCw size={18} /> <span className="hidden sm:inline">下一位</span>
+                                        </button>
+                                    )}
+                                </>
+                            ) : (
+                                view !== 'landing' && (
+                                    <button onClick={() => setView('landing')} className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">回首頁</button>
+                                )
+                            )}
                         </div>
-                    </div>
-                    <div className="flex gap-3">
-                        {view !== 'landing' && (
-                            <button onClick={() => setView('landing')} className="text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors">
-                            回首頁
-                            </button>
-                        )}
-                    </div>
                     </div>
                 </header>
 
                 {toast.show && (
-                    <div className={`fixed top-20 right-4 z-50 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 animate-bounce-in border ${
-                    toast.type === 'error' ? 'bg-red-50 text-red-700 border-red-100' : 
-                    toast.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                    'bg-slate-800 text-white border-slate-700'
-                    } no-print`}>
-                    {toast.type === 'error' ? <AlertCircle size={20}/> : <CheckCircle size={20}/>}
-                    <span className="font-semibold tracking-wide">{toast.msg}</span>
+                    <div className={`fixed top-24 right-4 z-50 px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-bounce-in border-2 ${toast.type === 'error' ? 'bg-red-50 text-red-800 border-red-200' : toast.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-slate-800 text-white border-slate-700'} no-print`}>
+                        {toast.type === 'error' ? <AlertCircle size={24}/> : <CheckCircle size={24}/>}
+                        <span className="font-black tracking-wide text-sm sm:text-base">{toast.msg}</span>
                     </div>
                 )}
 
-                <main className="max-w-4xl mx-auto px-4 py-10">
+                <main className={`max-w-4xl mx-auto px-4 sm:px-6 ${systemMode === 'campus' ? 'py-8 sm:py-12' : 'py-10'}`}>
                     
-                    {/* LANDING VIEW */}
-                    {view === 'landing' && (
+                    {/* --- STANDARD MODE: LANDING --- */}
+                    {systemMode === 'standard' && view === 'landing' && (
                     <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-8 animate-fade-in">
                         <div className="text-center space-y-3">
-                        <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">人才潛能評測系統</h2>
-                        <p className="text-slate-500 font-medium">Professional Personality Assessment</p>
+                            <h2 className="text-4xl font-black text-slate-900 tracking-tight">人才潛能評測系統</h2>
+                            <p className="text-slate-600 font-bold">Professional Personality Assessment</p>
                         </div>
-                        <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200 w-full max-w-lg transition-all hover:shadow-lg">
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">輸入存取代碼 (Config / Result)</label>
-                        <div className="flex gap-2">
-                            <input 
-                            type="text" 
-                            value={inputCode}
-                            onChange={(e) => setInputCode(e.target.value)}
-                            placeholder="在此貼上代碼..."
-                            className="flex-1 p-3 bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none font-mono text-sm transition-all"
-                            />
-                            <button 
-                            onClick={handleCodeSubmit}
-                            className="bg-slate-900 hover:bg-slate-800 text-white px-6 rounded-md transition-all shadow-sm active:translate-y-0.5 flex items-center justify-center"
-                            >
-                            <Play size={18} fill="currentColor" />
-                            </button>
-                        </div>
+                        <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 w-full max-w-lg transition-all hover:shadow-xl">
+                            <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-3">輸入存取代碼 (Config / Result)</label>
+                            <div className="flex gap-3">
+                                <input type="text" value={inputCode} onChange={(e) => setInputCode(e.target.value)} placeholder="在此貼上代碼..." className="flex-1 p-4 bg-gray-50 border border-gray-300 rounded-lg focus:ring-4 focus:ring-slate-200 focus:border-slate-600 outline-none font-mono text-base font-bold transition-all" />
+                                <button onClick={handleCodeSubmit} className="bg-slate-900 hover:bg-slate-800 text-white px-6 rounded-lg transition-all shadow-md active:translate-y-0.5 flex items-center justify-center"><Play size={20} fill="currentColor" /></button>
+                            </div>
                         </div>
                         
                         {/* GOD MODE MENU */}
                         {isGodMode && (
-                        <div className="w-full max-w-lg pt-4 grid grid-cols-2 gap-3">
-                            <button 
-                            onClick={() => setView('setup')}
-                            className="col-span-2 w-full bg-slate-800 text-white p-4 rounded-lg flex items-center justify-center gap-2 hover:bg-slate-900 transition-all shadow-md font-semibold tracking-wide"
-                            >
-                            <Settings size={18} />
-                            建立新測驗
+                        <div className="w-full max-w-lg pt-6 grid grid-cols-2 gap-4 animate-fade-in">
+                            <button onClick={enterCampusMode} className="col-span-2 w-full bg-indigo-700 text-white p-6 rounded-xl flex items-center justify-center gap-3 hover:bg-indigo-800 transition-all shadow-xl font-black text-xl tracking-wide border border-indigo-600 mb-2 active:scale-[0.98]">
+                                <Target size={28} /> 🎯 啟動「校園徵才」現場單機模式
                             </button>
-                            <button 
-                            onClick={() => setView('tutorial')}
-                            className="bg-white text-slate-700 border border-gray-200 p-4 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-slate-300 hover:bg-gray-50 transition-all font-semibold"
-                            >
-                            <BookOpen size={20} className="text-slate-600"/>
-                            系統教學
+                            <button onClick={() => setView('setup')} className="col-span-2 w-full bg-slate-800 text-white p-5 rounded-lg flex items-center justify-center gap-3 hover:bg-slate-900 transition-all shadow-md font-bold text-lg tracking-wide border border-slate-700">
+                                <Settings size={20} /> 建立新測驗代碼 (遠端發送標準版)
                             </button>
-                            <button 
-                            onClick={() => setView('deep-dive')}
-                            className="bg-white text-slate-700 border border-gray-200 p-4 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-slate-300 hover:bg-gray-50 transition-all font-semibold"
-                            >
-                            <Brain size={20} className="text-slate-600"/>
-                            測驗深度解析
-                            </button>
-                            <button 
-                            onClick={() => setView('ai-only')}
-                            className="col-span-2 bg-gray-100 text-slate-700 border border-gray-200 p-4 rounded-lg flex items-center justify-center gap-3 hover:bg-gray-200 transition-all font-semibold"
-                            >
-                            <FilePlus size={18} className="text-slate-600"/>
-                            純 AI 報告生成器 (貼上並列印)
+                            <button onClick={() => setView('tutorial')} className="col-span-2 bg-white text-slate-700 border-2 border-gray-200 p-5 rounded-lg flex items-center justify-center gap-3 hover:border-slate-300 hover:bg-gray-50 transition-all font-bold text-lg shadow-sm">
+                                <BookOpen size={22} className="text-slate-600"/> 系統教學
                             </button>
                         </div>
                         )}
                     </div>
                     )}
 
-                    {view === 'setup' && <QuizConfigurator showToast={showToast} onGenerate={() => {}} />}
-
-                    {view === 'candidate-info' && (
-                    <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200 max-w-lg mx-auto animate-fade-in">
-                        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-slate-800 tracking-tight"><User className="text-slate-700" /> 受試者資料</h2>
-                        <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">真實姓名</label>
-                            <input type="text" value={candidateInfo.name} onChange={(e) => setCandidateInfo({...candidateInfo, name: e.target.value})} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 outline-none transition-all" placeholder="請輸入姓名" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">出生年月日</label>
-                            <input type="date" value={candidateInfo.dob} onChange={(e) => setCandidateInfo({...candidateInfo, dob: e.target.value})} className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 outline-none transition-all" />
-                        </div>
-                        <button onClick={() => { if(!candidateInfo.name || !candidateInfo.dob) { showToast("請完整填寫資料", "error"); return; } setView('quiz'); }} className="w-full btn-prominent mt-4 flex items-center justify-center gap-2">開始測驗 <ArrowRight size={18} /></button>
+                    {/* --- STANDARD MODE: VIEWS --- */}
+                    {systemMode === 'standard' && view === 'setup' && <QuizConfigurator showToast={showToast} onGenerate={() => {}} />}
+                    
+                    {systemMode === 'standard' && view === 'candidate-info' && (
+                    <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 max-w-lg mx-auto animate-fade-in">
+                        <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-slate-800 tracking-tight"><User className="text-slate-700" /> 受測者資料</h2>
+                        <div className="space-y-5">
+                            <div><label className="block text-base font-bold text-slate-800 mb-2">真實姓名</label><input type="text" value={candidateInfo.name} onChange={(e) => setCandidateInfo({...candidateInfo, name: e.target.value})} className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-slate-200 focus:border-slate-800 outline-none font-bold text-lg bg-gray-50 focus:bg-white transition-all" placeholder="請輸入姓名" /></div>
+                            <div><label className="block text-base font-bold text-slate-800 mb-2">出生年月日</label><input type="date" value={candidateInfo.dob} onChange={(e) => setCandidateInfo({...candidateInfo, dob: e.target.value})} className="w-full p-4 border border-gray-300 rounded-lg focus:ring-4 focus:ring-slate-200 focus:border-slate-800 outline-none font-bold text-slate-700 bg-gray-50 focus:bg-white transition-all" /></div>
+                            <button onClick={() => { if(!candidateInfo.name || !candidateInfo.dob) { showToast("請完整填寫資料", "error"); return; } setView('quiz'); }} className="w-full btn-prominent mt-4 flex items-center justify-center gap-2 text-lg py-4 rounded-xl shadow-md">開始測驗 <ArrowRight size={20} /></button>
                         </div>
                     </div>
                     )}
 
+                    {systemMode === 'standard' && view === 'finish' && (
+                    <div className="bg-white p-12 rounded-xl shadow-xl border border-gray-200 text-center space-y-6 max-w-2xl mx-auto mt-8 animate-fade-in">
+                        <div className="w-20 h-20 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto ring-4 ring-emerald-50/50"><CheckCircle size={40} strokeWidth={3} /></div>
+                        <h2 className="text-4xl font-black text-slate-900 tracking-tight">測驗完成</h2>
+                        <p className="text-slate-700 font-bold text-lg leading-relaxed">請複製下方代碼並傳送給面試官。<br/><span className="text-rose-600 text-sm font-black block mt-4 uppercase tracking-widest bg-rose-50 inline-block px-4 py-2 rounded-lg border border-rose-200">⚠️ 關閉視窗前請確保代碼已傳送</span></p>
+                        <div className="relative group mt-8">
+                            <div className="bg-gray-50 p-8 rounded-xl break-all font-mono text-base font-bold border border-gray-300 text-slate-700 text-left min-h-[120px] shadow-inner">{inputCode}</div>
+                            <button onClick={() => handleCopyText(inputCode, () => showToast("已複製", "success"))} className="absolute top-3 right-3 p-3 bg-white rounded-lg shadow-md border border-gray-200 text-slate-700 hover:bg-slate-50 transition-colors active:scale-95"><Copy size={20} /></button>
+                        </div>
+                    </div>
+                    )}
+
+                    {/* --- STANDARD MODE: TUTORIAL --- */}
+                    {systemMode === 'standard' && view === 'tutorial' && (
+                    <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-200 max-w-3xl mx-auto animate-fade-in">
+                        <h2 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3"><BookOpen className="text-slate-700"/> 雙模式系統使用教學</h2>
+                        <div className="space-y-8">
+                            <div className="p-6 border-2 border-indigo-200 bg-indigo-50 rounded-xl mb-8 shadow-sm">
+                                <h3 className="font-black text-indigo-900 text-lg mb-3 flex items-center gap-2"><Target size={22}/> 校園徵才模式 (一條龍單機版)</h3>
+                                <p className="text-indigo-800 text-base font-bold leading-relaxed mb-3">適合場景：實體博覽會、說明會。主打快速、高流動率。</p>
+                                <ul className="list-disc ml-6 text-indigo-800 text-sm space-y-2 font-bold">
+                                    <li>免傳遞代碼，受測者做完立即顯示報告。</li>
+                                    <li>專屬 <span className="bg-indigo-100 px-2 py-0.5 rounded text-indigo-900">「作答真實性評估」</span>，秒抓亂點、護航。</li>
+                                    <li>右上角「下一位」按鈕一鍵重置。</li>
+                                </ul>
+                            </div>
+                            <div className="flex gap-5">
+                                <div className="w-10 h-10 bg-slate-800 text-white rounded-full flex items-center justify-center font-black shrink-0 text-base shadow-md">1</div>
+                                <div><h3 className="font-black text-lg mb-2 text-slate-800">建立測驗 (遠端發送)</h3><p className="text-slate-600 text-base font-bold leading-relaxed">首頁解鎖管理員模式後，點擊「建立新測驗代碼」。勾選模組，生成 Config Code 複製給受測者。</p></div>
+                            </div>
+                            <div className="flex gap-5">
+                                <div className="w-10 h-10 bg-slate-800 text-white rounded-full flex items-center justify-center font-black shrink-0 text-base shadow-md">2</div>
+                                <div><h3 className="font-black text-lg mb-2 text-slate-800">進行測驗 (受測端)</h3><p className="text-slate-600 text-base font-bold leading-relaxed">受測者在首頁貼上 Config Code 作答。完成後，系統會生成 Result Code。</p></div>
+                            </div>
+                            <div className="flex gap-5">
+                                <div className="w-10 h-10 bg-slate-800 text-white rounded-full flex items-center justify-center font-black shrink-0 text-base shadow-md">3</div>
+                                <div><h3 className="font-black text-lg mb-2 text-slate-800">解析報告 (面試官)</h3><p className="text-slate-600 text-base font-bold leading-relaxed">拿到 Result Code 後貼回首頁，系統將顯示視覺化報告及 AI 指令供您深度分析。</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    )}
+
+                    {/* --- CAMPUS MODE: SETUP --- */}
+                    {systemMode === 'campus' && view === 'campus-setup' && (
+                        <CampusSetup 
+                            candidateInfo={candidateInfo} 
+                            setCandidateInfo={setCandidateInfo} 
+                            setQuizConfig={setQuizConfig} 
+                            setAnswers={setAnswers} 
+                            setQuizStartTime={setQuizStartTime} 
+                            setQuizDuration={setQuizDuration} 
+                            setView={setView} 
+                            showToast={showToast} 
+                        />
+                    )}
+
+                    {/* --- COMMON QUIZ RUNNER --- */}
                     {view === 'quiz' && quizConfig && (
                     <QuizRunner 
-                        config={quizConfig}
-                        candidateInfo={candidateInfo}
-                        showToast={showToast}
+                        config={quizConfig} candidateInfo={candidateInfo} isCampusMode={systemMode === 'campus'}
                         onComplete={(finalAnswers) => {
-                        const resultCode = safeEncode({ config: quizConfig, answers: finalAnswers, candidate: candidateInfo, completedAt: Date.now() });
-                        setAnswers(finalAnswers);
-                        setInputCode(resultCode);
-                        localStorage.removeItem('pp_autosave'); 
-                        setView('finish');
-                        }}
-                        onProgress={(current) => {
-                        localStorage.setItem('pp_autosave', JSON.stringify({ candidateInfo, answers: current }));
+                            if (systemMode === 'campus') {
+                                const durationSecs = Math.round((Date.now() - quizStartTime) / 1000);
+                                setAnswers(finalAnswers); setQuizDuration(durationSecs); setView('result');
+                            } else {
+                                const resultCode = safeEncode({ config: quizConfig, answers: finalAnswers, candidate: candidateInfo, completedAt: Date.now() });
+                                setAnswers(finalAnswers); setInputCode(resultCode); setView('finish');
+                            }
                         }}
                     />
                     )}
 
-                    {view === 'finish' && (
-                    <div className="bg-white p-10 rounded-lg shadow-lg border border-gray-200 text-center space-y-6 max-w-2xl mx-auto mt-8 animate-fade-in">
-                        <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto ring-4 ring-emerald-50/50">
-                        <CheckCircle size={32} strokeWidth={2.5} />
-                        </div>
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">測驗完成</h2>
-                        <p className="text-slate-600 font-medium text-lg">請複製下方代碼並傳送給面試官。<br/><span className="text-rose-600 text-xs font-bold block mt-3 uppercase tracking-wider">注意：關閉視窗前請確保代碼已傳送</span></p>
-                        <div className="relative group">
-                        <div className="bg-gray-50 p-6 rounded-md break-all font-mono text-sm border border-gray-300 text-slate-600 text-left min-h-[100px] shadow-inner">{inputCode}</div>
-                        <button onClick={() => handleCopyText(inputCode, () => showToast("已複製", "success"))} className="absolute top-2 right-2 p-2 bg-white rounded-md shadow-sm border border-gray-200 text-slate-600 hover:bg-slate-100 transition-colors"><Copy size={16} /></button>
-                        </div>
-                    </div>
-                    )}
-
-                    {view === 'result' && <ResultDashboard answers={answers} config={quizConfig} candidateInfo={candidateInfo} showToast={showToast} />}
-
-                    {/* --- NEW VIEWS FOR ADMIN --- */}
-                    
-                    {view === 'tutorial' && (
-                    <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200 max-w-3xl mx-auto animate-fade-in">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-8 flex items-center gap-3"><BookOpen className="text-slate-700"/> 系統使用教學</h2>
-                        <div className="space-y-8">
-                        <div className="flex gap-4">
-                            <div className="w-8 h-8 bg-slate-800 text-white rounded-full flex items-center justify-center font-bold shrink-0 text-sm">1</div>
-                            <div>
-                            <h3 className="font-bold text-lg mb-1 text-slate-800">建立測驗 (HR 端)</h3>
-                            <p className="text-slate-600 text-sm leading-relaxed">在首頁解鎖管理員模式後，點擊「建立新測驗」。勾選您需要的模組（建議全選以獲得完整報告），點擊生成 Config Code 並複製給受測者。</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="w-8 h-8 bg-slate-800 text-white rounded-full flex items-center justify-center font-bold shrink-0 text-sm">2</div>
-                            <div>
-                            <h3 className="font-bold text-lg mb-1 text-slate-800">進行測驗 (受測者 端)</h3>
-                            <p className="text-slate-600 text-sm leading-relaxed">受測者在首頁貼上 Config Code，填寫姓名與生日後開始作答。所有測驗完成後，系統會生成一組 Result Code。</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="w-8 h-8 bg-slate-800 text-white rounded-full flex items-center justify-center font-bold shrink-0 text-sm">3</div>
-                            <div>
-                            <h3 className="font-bold text-lg mb-1 text-slate-800">解析報告 (HR 端)</h3>
-                            <p className="text-slate-600 text-sm leading-relaxed">HR 拿到 Result Code 後，在首頁貼上並送出（需先解鎖管理員）。系統將顯示視覺化報告，並提供 AI 指令供您複製到 ChatGPT 生成深度文案，最後可貼回報告並列印。</p>
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-                    )}
-
-                    {view === 'deep-dive' && (
-                    <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200 max-w-3xl mx-auto animate-fade-in">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-8 flex items-center gap-3"><Brain className="text-slate-700"/> 測驗深度解析</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="p-5 border border-gray-200 rounded-lg hover:border-slate-300 transition-colors">
-                            <h3 className="font-bold text-base text-blue-800 mb-2">DISC 行為風格</h3>
-                            <p className="text-sm text-slate-600 leading-relaxed">測量外顯行為與溝通模式。D(支配)、I(影響)、S(穩健)、C(分析)。用於判斷「他怎麼做事」。</p>
-                        </div>
-                        <div className="p-5 border border-gray-200 rounded-lg hover:border-slate-300 transition-colors">
-                            <h3 className="font-bold text-base text-indigo-800 mb-2">工作價值觀</h3>
-                            <p className="text-sm text-slate-600 leading-relaxed">兩兩比較法找出內心最看重的回饋。如：升遷、錢、自由、成就感。用於判斷「他要什麼」。</p>
-                        </div>
-                        <div className="p-5 border border-gray-200 rounded-lg hover:border-slate-300 transition-colors">
-                            <h3 className="font-bold text-base text-emerald-800 mb-2">Outcomes 驅動力</h3>
-                            <p className="text-sm text-slate-600 leading-relaxed">更深層的心理動機，如：權力、利他、美感。用於判斷「什麼能激勵他」。</p>
-                        </div>
-                        <div className="p-5 border border-gray-200 rounded-lg hover:border-slate-300 transition-colors">
-                            <h3 className="font-bold text-base text-purple-800 mb-2">成功特質 Traits</h3>
-                            <p className="text-sm text-slate-600 leading-relaxed">自我認知的強項檢核。未勾選的項目可視為「盲點」或「自信缺乏區」。</p>
-                        </div>
-                        <div className="p-5 border border-gray-200 rounded-lg hover:border-slate-300 transition-colors">
-                            <h3 className="font-bold text-base text-rose-800 mb-2">九型人格</h3>
-                            <p className="text-sm text-slate-600 leading-relaxed">揭示核心渴望與恐懼。如 Type 3 成就型怕失敗、Type 8 領袖型怕被掌控。</p>
-                        </div>
-                        <div className="p-5 border border-gray-200 rounded-lg hover:border-slate-300 transition-colors">
-                            <h3 className="font-bold text-base text-sky-800 mb-2">大五人格 OCEAN</h3>
-                            <p className="text-sm text-slate-600 leading-relaxed">心理學界公認最穩定的特質模型。預測長期工作績效最準確（尤其是盡責性 C）。</p>
-                        </div>
-                        </div>
-                    </div>
-                    )}
-
-                    {view === 'ai-only' && <AiReportGenerator showToast={showToast} />}
+                    {/* --- COMMON RESULT DASHBOARD --- */}
+                    {view === 'result' && <ResultDashboard answers={answers} config={quizConfig} candidateInfo={candidateInfo} showToast={showToast} isCampusMode={systemMode === 'campus'} duration={quizDuration} />}
 
                 </main>
-
-                <footer className="py-6 text-center text-slate-400 text-[10px] font-semibold tracking-wider uppercase no-print">Pure Offline Architecture • 2026 Personality Portal Enterprise</footer>
-
-                <style>{`
-                    .btn-prominent {
-                    background-color: #0f172a; /* Slate 900 */
-                    color: white;
-                    font-weight: 600;
-                    padding: 0.75rem 1.5rem;
-                    border-radius: 0.5rem; /* rounded-lg */
-                    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-                    transition: all 0.2s;
-                    border: 1px solid transparent;
-                    }
-                    .btn-prominent:hover {
-                    background-color: #1e293b; /* Slate 800 */
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-                    }
-                    .btn-prominent:active {
-                    transform: translateY(0);
-                    }
-                    .btn-prominent:disabled {
-                    opacity: 0.5;
-                    transform: none;
-                    box-shadow: none;
-                    cursor: not-allowed;
-                    }
-                    .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-                    .animate-bounce-in { animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-                    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-                    @keyframes bounceIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-                    .custom-scroller::-webkit-scrollbar { width: 6px; }
-                    .custom-scroller::-webkit-scrollbar-track { background: transparent; }
-                    .custom-scroller::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-                    .custom-scroller::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-                    
-                    /* Print Styles for Traits */
-                    .print-only { display: none; }
-                    @media print {
-                    .print-only { display: block !important; }
-                    .no-print { display: none !important; }
-                    }
-                `}</style>
                 </div>
             );
         }
