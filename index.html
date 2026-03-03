@@ -769,6 +769,7 @@
 
             const mandatoryOutputFormat = `## 輸出格式 (Markdown)\n⚠️ 非常重要：請務必將您產出的「整份最終報告內容」完全包裝在一個純文字程式碼區塊中 (也就是在開頭加上 \`\`\`text ，在結尾加上 \`\`\`)。請依照以下結構輸出：`;
 
+            // Common Prompt
             const getCandidatePrompt = () => `
 # 個人職涯探索與天賦分析報告
 角色: 你的專屬生涯教練與心理諮商師。任務: 協助 ${candidateInfo.name} 深度認識自己，探索職涯。
@@ -778,10 +779,13 @@ ${candidateDataStr}
 ${mandatoryOutputFormat}
 1. **[深層自我察覺]**: 綜合分析性格 DNA，隱藏天賦。
 2. **[職場定位]**: 適合的「工作型態」與「文化氛圍」。
-3. **[職涯方向建議]**: 3 個最適合的職業/職位及原因。
+3. **[職涯方向建議]**: 
+   - 請務必列出 **5 到 7 個**最適合的具體職業或領域。
+   - **推薦原因分析**：針對每一個職業，請「具體說明」是基於哪些測驗數據得出的結論（例如：「因為 DISC 的 D 型偏高，且 Outcomes 看重『獨立』與『金錢』，所以推薦此職業...」），請務必將客觀數據指標與職業特性做深度連結。
 4. **[成長備忘錄]**: 心理障礙克服與原子習慣建議。
 `.trim();
 
+            // Campus AI Prompts
             const getCampusAgentPrompt = () => `
 # 專業保險業務潛能評估報告 (校園版)
 角色: 頂尖保險業主管。任務: 分析 ${candidateInfo.name} 的潛力。
@@ -810,23 +814,24 @@ ${mandatoryOutputFormat}
 3. **[面試驗證建議]**: 1-2 個尖銳的面試提問。
 `.trim();
 
+            // Standard AI Prompts
             const getStandardAgentPrompt = () => `
 # 專業保險業務潛能評估報告
-角色: 保經處經理與組織心理學家。任務: 分析 ${candidateInfo.name} 成為 MDRT 的潛力。
+角色: 頂尖保險業主管與組織心理學家。任務: 分析 ${candidateInfo.name} 成為 MDRT (百萬圓桌) 保險業務員的潛力。
 ## 數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
-1. **[銷售潛力]**: 風格定義。
-2. **[保經 vs 保險員]**: 單一公司或保經適配。
-3. **[MDRT 潛質]**: 抗壓與自律。
-4. **[留任風險與激勵]**: 誘因。
-5. **[黃金 90 天策略]**: 輔導重點。
-6. **[Closing 戰術]**: 話術。
+1. **[銷售潛力]**: 用保險業的語言定義其風格（如：開發型/經營型/獵手等）。
+2. **[保險業適配度分析]**: 綜合評估其性格特質是否適合高壓、業績導向且需大量與人接觸的「保險銷售工作」，並分析其面對「陌生開發被拒絕」的挫折忍受力。
+3. **[MDRT 潛質]**: 評估其抗壓性、客戶連結力與自律性。
+4. **[留任風險與激勵]**: 他是為了什麼而戰？主管該如何餵養他的慾望？
+5. **[黃金 90 天策略]**: 針對其性格，提供前三個月的具體輔導重點。
+6. **[Closing 戰術]**: 打動他的職涯願景，以及預判他會猶豫的原因並提供化解話術。
 `.trim();
 
             const getSalesAssistantPrompt = () => `
 # 業務助理適配性評估
-角色: HR 專家。評估 ${candidateInfo.name} 是否適合高壓業務助理。
+角色: HR 專家。評估 ${candidateInfo.name} 是否適合高壓業務團隊的助理。
 ## 數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
@@ -838,7 +843,7 @@ ${mandatoryOutputFormat}
 
             const getAssistantToAgentPrompt = () => `
 # 助理轉型保險業務 - 潛能引導
-角色: 王牌通訊處經理。任務: 挖掘 ${candidateInfo.name} 的隱藏業務天賦並設計說服話術。
+角色: 頂尖保險業主管。任務: 挖掘 ${candidateInfo.name} 的隱藏業務天賦並設計說服話術。
 ## 數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
