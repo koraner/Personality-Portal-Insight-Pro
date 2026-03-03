@@ -3,12 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personality Portal - 雙模式潛能評測系統</title>
+    <title>Personality Portal</title>
     
     <!-- 1. Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 2. React & ReactDOM -->
+    <!-- 2. 設定 Tailwind 優先使用芫荽體 (Iansui) -->
+    <script id="tw-config">
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Iansui', 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 3. React & ReactDOM -->
     <script type="importmap">
     {
       "imports": {
@@ -19,7 +32,7 @@
     }
     </script>
 
-    <!-- 3. Babel Standalone & HTML2PDF -->
+    <!-- 4. Babel Standalone & HTML2PDF -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
@@ -28,26 +41,20 @@
         /* 載入芫荽體 Iansui */
         @font-face {
             font-family: 'Iansui';
-            /* 發佈至 GitHub 的終極字體載入策略：
-               1. 優先找使用者電腦內建的字體 (local)
-               2. 找 GitHub Repo 同目錄下的字體檔 (./Iansui-Regular.ttf)
-               3. 終極備援：如果上述都失敗，從 jsDelivr 開源 CDN 抓取，確保列印與 PDF 絕對不跑版
-            */
+            /* 優先找使用者電腦內建的字體，若無則從 GitHub Repo 同目錄下找，最後從開源 CDN 抓取 */
             src: local('芫荽'),
                  local('Iansui'),
                  local('Iansui-Regular'),
                  local('Iansui Regular'),
                  url('./Iansui-Regular.ttf') format('truetype'),
-                 url('https://cdn.jsdelivr.net/gh/ButTaiwan/iansui@master/Iansui-Regular.ttf') format('truetype');
+                 url('https://cdn.jsdelivr.net/gh/ButTaiwan/iansui/Iansui-Regular.ttf') format('truetype');
             font-display: swap;
         }
 
         body {
-            /* 強制優先採用 Iansui，並設定基礎字重 */
-            font-family: 'Iansui', 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif !important;
             background-color: #f8fafc; 
             -webkit-tap-highlight-color: transparent;
-            font-weight: 600;
+            font-weight: 600; /* 全面加粗，拒絕細體字 */
         }
 
         .custom-scroller::-webkit-scrollbar { width: 6px; }
@@ -118,7 +125,7 @@
 <body>
     <div id="root"></div>
 
-    <!-- 4. 主程式碼 -->
+    <!-- 5. 主程式碼 -->
     <script type="text/babel" data-type="module" data-presets="typescript,react">
         import React, { useState, useEffect, useMemo } from 'react';
         import { createRoot } from 'react-dom/client';
@@ -342,12 +349,17 @@
             // 將字體的相對路徑轉換為絕對路徑，確保列印彈跳視窗 (about:blank) 也能讀取到本機字體檔
             const baseHref = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
             styles = styles.replace(/\.\/Iansui-Regular\.ttf/g, baseHref + 'Iansui-Regular.ttf');
+
+            // 確保列印視窗也有 Tailwind Iansui 字體設定
+            const twConfig = document.getElementById('tw-config') ? document.getElementById('tw-config').outerHTML : '';
             
             win.document.write(`
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <title>${docTitle}</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    ${twConfig}
                     ${styles}
                     <style>
                         body { padding: 20px; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Iansui', 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif !important; font-weight: 600; }
