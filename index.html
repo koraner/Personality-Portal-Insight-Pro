@@ -1119,7 +1119,7 @@ ${mandatoryOutputFormat}
 
                     <section className="card break-inside-avoid page-break-before">
                     <div className="flex items-center justify-between mb-6 border-b border-gray-200 pb-4">
-                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><Brain size={24} className="text-slate-700"/> 8. AI 深度分析報告</h3>
+                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><Brain size={24} className="text-slate-700"/> 8. 深度分析報告</h3>
                         <button onClick={() => setIsEditingReport(!isEditingReport)} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-black transition-colors shadow-sm no-print ${isEditingReport ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
                         {isEditingReport ? <><Eye size={18}/> 預覽渲染</> : <><Edit3 size={18}/> 編輯模式</>}
                         </button>
@@ -1127,7 +1127,7 @@ ${mandatoryOutputFormat}
                     {isEditingReport ? (
                         <div className="space-y-4 no-print">
                             <div className="flex justify-between items-end">
-                                <p className="text-sm font-bold text-slate-600">💡 提示：複製下方指令後，將 AI 的分析結果貼上至此。</p>
+                                <p className="text-sm font-bold text-slate-600">💡 提示：將分析結果貼上至此。</p>
                                 <button onClick={async () => { try { const text = await navigator.clipboard.readText(); if(text) { setAiReportContent(text); showToast("已成功貼上 AI 報告", "success"); } } catch(err) { showToast("請手動長按貼上", "error"); } }} className="flex items-center gap-1.5 text-sm font-bold text-indigo-700 bg-indigo-50 px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm active:scale-95 border border-indigo-200">
                                     <Clipboard size={16} /> 貼上報告
                                 </button>
@@ -1490,3 +1490,4 @@ ${mandatoryOutputFormat}
     </script>
 </body>
 </html>
+
