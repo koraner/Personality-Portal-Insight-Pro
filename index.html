@@ -130,7 +130,7 @@
             ArrowRight, Brain, Target, ListOrdered, Plus, X, ChevronUp, ChevronDown, 
             Calendar, Clock, Briefcase, Lock, PieChart, Activity, Compass, BookOpen, 
             Edit3, Eye, Layers, FileText, HelpCircle, FilePlus, Info, RefreshCw,
-            Users, TrendingUp, List, Clipboard, Zap, ShieldAlert, Fingerprint, LogOut, Download
+            Users, TrendingUp, List, Clipboard, Zap, ShieldAlert, Fingerprint, LogOut, Download, Sparkles
         } from 'lucide-react';
 
         // --- DATA & CONSTANTS ---
@@ -163,6 +163,7 @@
             { A: "同事", B: "待遇" }, { A: "自主性", B: "同事" }, { A: "環境", B: "自主性" }
         ];
 
+        // 確保與提供的檔案文字完全一致，並補上問卷內容
         const OUTCOMES_ITEMS = [
             { id: "O1", term: "獨立", desc: "依照自己的意願運作自己的業務，做自己的老闆。", questions: ["• 你曾感到被限制？", "• 你覺得被規定和繁瑣手續打敗嗎？", "• 你是否經常與主管意見不同？"] },
             { id: "O2", term: "受肯定", desc: "工作表現優良，能得到別人的讚賞，如在公開場合或演講中被表揚。", questions: ["• 「贏」對您而言有多重要？", "• 當別人獲得肯定時，你的感覺如何？", "• 為了贏得肯定，你會全力以赴嗎？"] },
@@ -244,6 +245,31 @@
         };
 
         const MODULES_MAP = ['disc', 'values', 'outcomes', 'traits', 'enneagram', 'big5', 'holland'];
+
+        // --- DEMO REALISTIC DATA ---
+        const DEMO_CANDIDATE = { name: '林宇翔', dob: '1996-08-15' };
+        const DEMO_ANSWERS = {
+            disc: { D: 4, I: 5, S: 1, C: 0 },
+            values: { "待遇": 6, "成就感": 5, "自主性": 4, "升遷": 3, "自我成長": 2, "同事": 1, "環境": 0 },
+            outcomes: [
+                OUTCOMES_ITEMS.find(x => x.id === "O7"), // 金錢
+                OUTCOMES_ITEMS.find(x => x.id === "O1"), // 獨立
+                OUTCOMES_ITEMS.find(x => x.id === "O3"), // 成就感
+                OUTCOMES_ITEMS.find(x => x.id === "O8"), // 挑戰
+                OUTCOMES_ITEMS.find(x => x.id === "O2"), // 受肯定
+                OUTCOMES_ITEMS.find(x => x.id === "O12"),// 個人成長
+                OUTCOMES_ITEMS.find(x => x.id === "O5"), // 權力
+                OUTCOMES_ITEMS.find(x => x.id === "O6"), // 聲望
+                OUTCOMES_ITEMS.find(x => x.id === "O9"), // 自尊
+                OUTCOMES_ITEMS.find(x => x.id === "O4"), // 休閒時間
+                OUTCOMES_ITEMS.find(x => x.id === "O10"),// 家庭生活
+                OUTCOMES_ITEMS.find(x => x.id === "O11") // 安全感
+            ],
+            traits: ["我有野心", "我有信心", "我熱情", "我能和別人溝通", "我有說服力", "我追求目標", "我會採取主動", "我很堅定", "我的精力充沛", "我能盡責任", "我是可靠的"],
+            enneagram: { "1": 3, "2": 4, "3": 8, "4": 2, "5": 2, "6": 3, "7": 5, "8": 6, "9": 2 },
+            big5: { E: 12, A: 8, C: 11, N: 4, O: 10 },
+            holland: { R: 1, I: 2, A: 2, S: 4, E: 5, C: 1 }
+        };
 
         // --- ENCODE / DECODE (標準版用) ---
         const compress = (data) => {
@@ -345,36 +371,37 @@
 
             const twConfig = document.getElementById('tw-config') ? document.getElementById('tw-config').outerHTML : '';
             
-            win.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>${docTitle}</title>
-                    <script src="https://cdn.tailwindcss.com"><\/script>
-                    ${twConfig}
-                    ${styles}
-                    <style>
-                        @media print { @page { margin: 10mm; size: A4 portrait; } }
-                        body { padding: 30px; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: 'Iansui', 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif !important; font-weight: 600; }
-                        .no-print { display: none !important; }
-                        .print-only { display: block !important; }
-                        #report-container { box-shadow: none !important; border: none !important; margin: 0 !important; max-width: 100% !important; padding: 0 !important; width: 100% !important; }
-                        .card { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 20px !important; }
-                        .page-break-before { page-break-before: always !important; }
-                        h1, h2, h3 { page-break-after: avoid !important; break-after: avoid !important; }
-                    </style>
-                </head>
-                <body>
-                    ${printContent.outerHTML}
-                    <div style="margin-top:20px; font-size:12px; color:#666; text-align:center;">Personality Portal Analysis Report • Generated on ${new Date().toLocaleString()}</div>
-                    <script>
-                        window.onload = function() {
-                            setTimeout(() => { window.print(); window.close(); }, 800);
-                        };
-                    </` + `script>
-                </body>
-                </html>
-            `);
+            // 使用字串相加避免 html parser 提前截斷 script
+            win.document.write(
+                '<!DOCTYPE html>\n' +
+                '<html>\n' +
+                '<head>\n' +
+                '    <title>' + docTitle + '</title>\n' +
+                '    <script src="https://cdn.tailwindcss.com"><' + '/script>\n' +
+                '    ' + twConfig + '\n' +
+                '    ' + styles + '\n' +
+                '    <style>\n' +
+                '        @media print { @page { margin: 10mm; size: A4 portrait; } }\n' +
+                '        body { padding: 30px; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: "Iansui", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif !important; font-weight: 600; }\n' +
+                '        .no-print { display: none !important; }\n' +
+                '        .print-only { display: block !important; }\n' +
+                '        #report-container { box-shadow: none !important; border: none !important; margin: 0 !important; max-width: 100% !important; padding: 0 !important; width: 100% !important; }\n' +
+                '        .card { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 20px !important; }\n' +
+                '        .page-break-before { page-break-before: always !important; }\n' +
+                '        h1, h2, h3 { page-break-after: avoid !important; break-after: avoid !important; }\n' +
+                '    </style>\n' +
+                '</head>\n' +
+                '<body>\n' +
+                '    ' + printContent.outerHTML + '\n' +
+                '    <div style="margin-top:20px; font-size:12px; color:#666; text-align:center;">Personality Portal Analysis Report • Generated on ' + new Date().toLocaleString() + '</div>\n' +
+                '    <script>\n' +
+                '        window.onload = function() {\n' +
+                '            setTimeout(() => { window.print(); window.close(); }, 800);\n' +
+                '        };\n' +
+                '    <' + '/script>\n' +
+                '</body>\n' +
+                '</html>'
+            );
             win.document.close();
         };
 
@@ -466,7 +493,6 @@
             );
         }
 
-        // 修改後的 OutcomesModule：在左側卡片中加入問題列表的渲染
         function OutcomesModule({ onFinish, isLastStep, isCampusMode }) {
             const [pool, setPool] = useState(OUTCOMES_ITEMS);
             const [ranked, setRanked] = useState([]);
@@ -488,17 +514,17 @@
                         {pool.map(item => (
                         <div key={item.id} onClick={() => add(item)} className={`bg-white p-4 rounded-md shadow-sm border border-gray-200 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group ${isCampusMode && 'active:scale-[0.98]'}`}>
                             <div className="flex justify-between items-center mb-2">
-                                <span className="text-lg font-extrabold text-slate-800 group-hover:text-emerald-700">{item.term}</span>
+                                <span className="text-base font-extrabold text-slate-800 group-hover:text-emerald-700">{item.term}</span>
                                 <Plus size={isCampusMode ? 24 : 20} className={`text-slate-300 group-hover:text-emerald-500 ${isCampusMode && 'bg-slate-50 rounded-full p-1'}`}/>
                             </div>
-                            <p className="text-sm font-bold text-slate-600 leading-relaxed mb-3">{item.desc}</p>
-                            {/* 新增的思考問題區塊 */}
+                            <p className="text-xs font-bold text-slate-600 leading-relaxed mb-3">{item.desc}</p>
+                            {/* 思考問題區塊 */}
                             {item.questions && item.questions.length > 0 && (
-                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                    <div className="text-xs font-black text-slate-500 mb-1.5">思考問題：</div>
+                                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                                    <div className="text-[11px] font-black text-slate-500 mb-1">思考問題：</div>
                                     <ul className="space-y-1">
                                         {item.questions.map((q, qIdx) => (
-                                            <li key={qIdx} className="text-xs font-bold text-slate-600 leading-normal">{q}</li>
+                                            <li key={qIdx} className="text-[11px] font-bold text-slate-600 leading-tight">{q}</li>
                                         ))}
                                     </ul>
                                 </div>
@@ -514,7 +540,7 @@
                         {ranked.map((item, i) => (
                         <div key={item.id} className={`bg-slate-50 ${isCampusMode ? 'p-3 sm:p-4' : 'p-3'} rounded-md border border-slate-200 flex items-center gap-3 animate-fade-in`}>
                             <div className={`w-8 h-8 rounded flex items-center justify-center font-black text-sm shrink-0 ${i < 3 ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 border border-gray-200'}`}>{i + 1}</div>
-                            <div className="flex-1"><span className={`${isCampusMode ? 'text-base' : 'text-sm'} font-extrabold text-slate-800 block`}>{item.term}</span></div>
+                            <div className="flex-1"><span className={`text-sm font-extrabold text-slate-800 block`}>{item.term}</span></div>
                             <div className={`flex ${isCampusMode ? 'gap-2' : 'gap-1'} shrink-0`}>
                                 <button onClick={() => move(i, -1)} className={isCampusMode ? 'p-2 sm:p-3 bg-white border border-gray-200 shadow-sm rounded-lg text-slate-500 active:scale-95' : 'p-1 hover:bg-white rounded text-slate-400 hover:text-slate-800'}><ChevronUp size={isCampusMode ? 20 : 18}/></button>
                                 <button onClick={() => move(i, 1)} className={isCampusMode ? 'p-2 sm:p-3 bg-white border border-gray-200 shadow-sm rounded-lg text-slate-500 active:scale-95' : 'p-1 hover:bg-white rounded text-slate-400 hover:text-slate-800'}><ChevronDown size={isCampusMode ? 20 : 18}/></button>
@@ -544,7 +570,7 @@
                     <label key={t} className={`flex items-center gap-3 ${isCampusMode ? 'p-5 active:scale-[0.98]' : 'p-4'} rounded-lg border cursor-pointer transition-all select-none ${checked.includes(t) ? 'border-slate-800 bg-gray-50 shadow-sm' : 'border-gray-200 hover:border-slate-300 bg-white'}`}>
                         <input type="checkbox" className="hidden" checked={checked.includes(t)} onChange={() => toggle(t)} />
                         <div className={`rounded border flex items-center justify-center transition-colors ${isCampusMode ? 'w-6 h-6' : 'w-5 h-5'} ${checked.includes(t) ? 'bg-slate-800 border-slate-800' : 'bg-white border-gray-300'}`}>{checked.includes(t) && <CheckCircle size={isCampusMode ? 16 : 14} className="text-white" />}</div>
-                        <span className={`font-extrabold ${isCampusMode ? 'text-base' : ''} ${checked.includes(t) ? 'text-slate-900' : 'text-slate-600'}`}>{t}</span>
+                        <span className={`font-extrabold ${isCampusMode ? 'text-base' : 'text-sm'} ${checked.includes(t) ? 'text-slate-900' : 'text-slate-600'}`}>{t}</span>
                     </label>
                     ))}
                 </div>
@@ -561,8 +587,8 @@
                 <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-bold text-sm">請勾選「是」如果該描述非常符合您，否則勾選「否」。</div>
                 <div className="grid grid-cols-1 gap-4">
                     {ENNEAGRAM_QUESTIONS.map((q) => (
-                    <div key={q.id} className={`${isCampusMode ? 'p-5' : 'p-4'} bg-white border border-gray-200 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:border-slate-300 transition-colors`}>
-                        <span className={`font-extrabold text-slate-700 flex-1 ${isCampusMode ? 'text-base leading-relaxed' : ''}`}>{q.text}</span>
+                    <div key={q.id} className={`${isCampusMode ? 'p-5' : 'p-3 sm:p-4'} bg-white border border-gray-200 rounded-lg flex flex-col sm:flex-row justify-between sm:items-center gap-4 hover:border-slate-300 transition-colors`}>
+                        <span className={`font-extrabold text-slate-700 flex-1 ${isCampusMode ? 'text-base leading-relaxed' : 'text-sm leading-relaxed'}`}>{q.text}</span>
                         <div className="flex gap-2 sm:gap-3 shrink-0">
                         <button onClick={() => setSelections({...selections, [q.id]: 1})} className={`flex-1 sm:flex-none ${isCampusMode ? 'px-8 py-3 rounded-lg active:scale-95' : 'px-4 py-2 rounded-md'} font-black border transition-colors ${selections[q.id] === 1 ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-400 border-gray-200 hover:bg-gray-50'}`}>是</button>
                         <button onClick={() => setSelections({...selections, [q.id]: 0})} className={`flex-1 sm:flex-none ${isCampusMode ? 'px-8 py-3 rounded-lg active:scale-95' : 'px-4 py-2 rounded-md'} font-black border transition-colors ${selections[q.id] === 0 ? 'bg-slate-600 text-white border-slate-600' : 'bg-white text-slate-400 border-gray-200 hover:bg-gray-50'}`}>否</button>
@@ -585,10 +611,10 @@
                 <div className="bg-slate-50 border-l-4 border-slate-600 p-4 text-slate-700 font-bold text-sm">請評分以下描述符合您的程度 (1:非常不同意 - 5:非常同意)。</div>
                 {BIG5_QUESTIONS.map((q) => (
                     <div key={q.id} className={isCampusMode ? 'space-y-3 bg-white p-5 rounded-lg border border-gray-200' : 'space-y-2'}>
-                    <div className={`font-extrabold text-slate-700 ${isCampusMode ? 'text-base' : ''}`}>{q.text}</div>
+                    <div className={`font-extrabold text-slate-700 ${isCampusMode ? 'text-base' : 'text-sm'}`}>{q.text}</div>
                     <div className={`flex justify-between gap-2 ${isCampusMode ? 'sm:gap-4' : ''}`}>
                         {[1,2,3,4,5].map(v => (
-                        <button key={v} onClick={() => setRatings({...ratings, [q.id]: v})} className={`flex-1 ${isCampusMode ? 'py-4 sm:py-5 rounded-lg text-lg active:scale-95' : 'py-3 rounded-md'} font-black border transition-all ${ratings[q.id] === v ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-400 border-gray-200 hover:bg-gray-50'}`}>{v}</button>
+                        <button key={v} onClick={() => setRatings({...ratings, [q.id]: v})} className={`flex-1 ${isCampusMode ? 'py-4 sm:py-5 rounded-lg text-lg active:scale-95' : 'py-2 rounded-md text-sm'} font-black border transition-all ${ratings[q.id] === v ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-400 border-gray-200 hover:bg-gray-50'}`}>{v}</button>
                         ))}
                     </div>
                     </div>
@@ -611,7 +637,7 @@
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {HOLLAND_ACTIVITIES.map((act, i) => (
                     <div key={i} onClick={() => toggle(i)} className={`${isCampusMode ? 'p-5 active:scale-[0.98]' : 'p-4'} border rounded-lg cursor-pointer flex items-center justify-between transition-colors ${selected.includes(i) ? 'border-slate-800 bg-gray-50' : 'border-gray-200 hover:bg-gray-50 bg-white'}`}>
-                        <span className={`font-extrabold ${isCampusMode ? 'text-base' : ''} ${selected.includes(i) ? 'text-slate-900' : 'text-slate-600'}`}>{act.text}</span>
+                        <span className={`font-extrabold ${isCampusMode ? 'text-base' : 'text-sm'} ${selected.includes(i) ? 'text-slate-900' : 'text-slate-600'}`}>{act.text}</span>
                         {selected.includes(i) && <CheckCircle className="text-slate-800" size={isCampusMode ? 20 : 18}/>}
                     </div>
                     ))}
@@ -641,13 +667,13 @@
                 <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-slate-800"><Settings className="text-slate-700"/> 建立測驗配置 (遠端標準版)</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                     {[{ id: 'disc', label: 'DISC 性格測驗', sub: '10題完整版' }, { id: 'values', label: '工作價值觀', sub: '7項定義 + 21題二選一' }, { id: 'outcomes', label: 'Outcomes 驅動力', sub: '12項價值排序' }, { id: 'traits', label: '成功特質檢核', sub: '35項特質掃描' }, { id: 'enneagram', label: '九型人格', sub: '18題快速版' }, { id: 'big5', label: '大五人格', sub: 'TIPI 10題版' }, { id: 'holland', label: '職業興趣 RIASEC', sub: '30項興趣檢核' }].map(m => (
-                    <div key={m.id} onClick={() => setModules({...modules, [m.id]: !modules[m.id]})} className={`p-4 border rounded-lg cursor-pointer transition-all flex justify-between items-center ${modules[m.id] ? 'border-slate-800 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-                        <div><div className={`font-extrabold ${modules[m.id] ? 'text-slate-900' : 'text-slate-500'}`}>{m.label}</div><div className="text-xs font-bold text-slate-400">{m.sub}</div></div>
-                        {modules[m.id] && <CheckCircle size={20} className="text-slate-800" />}
+                    <div key={m.id} onClick={() => setModules({...modules, [m.id]: !modules[m.id]})} className={`p-3 border rounded-lg cursor-pointer transition-all flex justify-between items-center ${modules[m.id] ? 'border-slate-800 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <div><div className={`font-extrabold text-sm ${modules[m.id] ? 'text-slate-900' : 'text-slate-500'}`}>{m.label}</div><div className="text-[11px] font-bold text-slate-400">{m.sub}</div></div>
+                        {modules[m.id] && <CheckCircle size={18} className="text-slate-800" />}
                     </div>
                     ))}
                 </div>
-                <button onClick={generate} className="w-full btn-prominent py-4 text-lg">產生 Config Code</button>
+                <button onClick={generate} className="w-full btn-prominent py-3 text-base">產生 Config Code</button>
                 {code && (
                     <div className="mt-6 bg-gray-50 p-4 rounded-md border border-gray-200 animate-fade-in">
                     <label className="text-xs font-black text-slate-500 mb-2 block uppercase tracking-wide">Config Code</label>
@@ -680,12 +706,12 @@
 
             return (
                 <Wrapper className={wrapperClass}>
-                <div className="mb-8 pb-4 border-b border-gray-100 flex justify-between items-end">
+                <div className="mb-6 pb-4 border-b border-gray-100 flex justify-between items-end">
                     <div>
-                    <span className="text-slate-600 font-black bg-gray-100 px-3 py-1 rounded-full text-xs tracking-wider">STEP {step + 1} / {config.modules.length}</span>
+                    <span className="text-slate-600 font-black bg-gray-100 px-3 py-1 rounded-full text-[11px] tracking-wider">STEP {step + 1} / {config.modules.length}</span>
                     <h2 className="text-2xl font-black text-slate-900 mt-3 uppercase tracking-tight">{moduleKey}</h2>
                     </div>
-                    <div className="text-right text-xs font-bold text-slate-400">受測者：{candidateInfo.name}</div>
+                    <div className="text-right text-[11px] font-bold text-slate-400">受測者：{candidateInfo.name}</div>
                 </div>
                 {moduleKey === 'disc' && <DiscModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
                 {moduleKey === 'values' && <ValuesModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
@@ -699,7 +725,7 @@
         }
 
         const renderMarkdown = (text) => {
-            if (!text) return <span className="text-slate-400 italic font-bold">（尚未輸入 AI 分析報告）</span>;
+            if (!text) return <span className="text-slate-400 italic font-bold">（尚未輸入分析報告）</span>;
             
             const formatInline = (str) => {
                 const parts = str.split(/(\*\*.*?\*\*)/g);
@@ -714,13 +740,13 @@
             const lines = text.split('\n');
             return lines.map((line, index) => {
                 const tLine = line.trim();
-                if (tLine.startsWith('### ')) return <h3 key={index} className="text-lg font-black text-slate-800 mt-6 mb-2">{formatInline(tLine.substring(4))}</h3>;
-                if (tLine.startsWith('## ')) return <h2 key={index} className="text-xl font-black text-slate-800 mt-8 mb-3">{formatInline(tLine.substring(3))}</h2>;
+                if (tLine.startsWith('### ')) return <h3 key={index} className="text-base font-black text-slate-800 mt-4 mb-1">{formatInline(tLine.substring(4))}</h3>;
+                if (tLine.startsWith('## ')) return <h2 key={index} className="text-lg font-black text-slate-800 mt-5 mb-2">{formatInline(tLine.substring(3))}</h2>;
                 if (tLine.startsWith('# ')) return <h1 key={index} className="text-2xl font-black text-slate-900 mt-8 mb-4 border-b border-gray-200 pb-2">{formatInline(tLine.substring(2))}</h1>;
-                if (tLine.startsWith('- ')) return <div key={index} className="flex items-start gap-2 ml-4 mt-2 mb-2"><span className="text-slate-400 mt-0.5 font-black">•</span><span className="flex-1 font-bold text-slate-700">{formatInline(tLine.substring(2))}</span></div>;
-                if (tLine.match(/^\d+\.\s/)) return <div key={index} className="mt-5 mb-2 font-black text-slate-800 text-base leading-relaxed">{formatInline(tLine)}</div>;
-                if (tLine === '') return <div key={index} className="h-3"></div>;
-                return <p key={index} className="mb-2 leading-relaxed text-slate-700 font-bold">{formatInline(line)}</p>;
+                if (tLine.startsWith('- ')) return <div key={index} className="flex items-start gap-2 ml-4 mt-1.5 mb-1.5"><span className="text-slate-400 mt-0.5 font-black">•</span><span className="flex-1 font-bold text-slate-700 text-sm">{formatInline(tLine.substring(2))}</span></div>;
+                if (tLine.match(/^\d+\.\s/)) return <div key={index} className="mt-4 mb-1.5 font-black text-slate-800 text-sm leading-relaxed">{formatInline(tLine)}</div>;
+                if (tLine === '') return <div key={index} className="h-2"></div>;
+                return <p key={index} className="mb-1.5 leading-relaxed text-slate-700 font-bold text-sm">{formatInline(line)}</p>;
             });
         };
 
@@ -769,7 +795,17 @@
 
             const mandatoryOutputFormat = `## 輸出格式 (Markdown)\n⚠️ 非常重要：請務必將您產出的「整份最終報告內容」完全包裝在一個純文字程式碼區塊中 (也就是在開頭加上 \`\`\`text ，在結尾加上 \`\`\`)。請依照以下結構輸出：`;
 
-            // Common Prompt
+            const getSummaryPrompt = () => `
+# 性格與潛能簡介報告 (給受測者的破冰回饋)
+角色: 專業心理測評師。
+任務: 根據以下數據，為 ${candidateInfo.name} 寫一段約 300 字的「性格亮點簡介」。
+目的: 讓受測者覺得「很準、被理解」，並產生想要了解更多的信任感。不需給出具體職業建議，只要點出他最突出的 2-3 個特質優勢即可。語氣要專業、溫暖、肯定。
+請「完全且僅能」基於下方的測驗數據分析，不受過往對話影響。
+## 測驗數據
+${candidateDataStr}
+${mandatoryOutputFormat}
+`.trim();
+
             const getCandidatePrompt = () => `
 # 個人職涯探索與天賦分析報告
 角色: 你的專屬生涯教練與心理諮商師。任務: 協助 ${candidateInfo.name} 深度認識自己，探索職涯。
@@ -785,7 +821,6 @@ ${mandatoryOutputFormat}
 4. **[成長備忘錄]**: 心理障礙克服與原子習慣建議。
 `.trim();
 
-            // Campus AI Prompts
             const getCampusAgentPrompt = () => `
 # 專業保險業務潛能評估報告 (校園版)
 角色: 頂尖保險業主管。任務: 分析 ${candidateInfo.name} 的潛力。
@@ -814,24 +849,23 @@ ${mandatoryOutputFormat}
 3. **[面試驗證建議]**: 1-2 個尖銳的面試提問。
 `.trim();
 
-            // Standard AI Prompts
             const getStandardAgentPrompt = () => `
 # 專業保險業務潛能評估報告
-角色: 頂尖保險業主管與組織心理學家。任務: 分析 ${candidateInfo.name} 成為 MDRT (百萬圓桌) 保險業務員的潛力。
+角色: 保經處經理與組織心理學家。任務: 分析 ${candidateInfo.name} 成為 MDRT (百萬圓桌) 保險業務員的潛力。
 ## 數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
-1. **[銷售潛力]**: 用保險業的語言定義其風格（如：開發型/經營型/獵手等）。
-2. **[保險業適配度分析]**: 綜合評估其性格特質是否適合高壓、業績導向且需大量與人接觸的「保險銷售工作」，並分析其面對「陌生開發被拒絕」的挫折忍受力。
-3. **[MDRT 潛質]**: 評估其抗壓性、客戶連結力與自律性。
-4. **[留任風險與激勵]**: 他是為了什麼而戰？主管該如何餵養他的慾望？
-5. **[黃金 90 天策略]**: 針對其性格，提供前三個月的具體輔導重點。
-6. **[Closing 戰術]**: 打動他的職涯願景，以及預判他會猶豫的原因並提供化解話術。
+1. **[銷售潛力]**: 風格定義。
+2. **[保經 vs 保險員]**: 單一公司或保經適配。
+3. **[MDRT 潛質]**: 抗壓與自律。
+4. **[留任風險與激勵]**: 誘因。
+5. **[黃金 90 天策略]**: 輔導重點。
+6. **[Closing 戰術]**: 話術。
 `.trim();
 
             const getSalesAssistantPrompt = () => `
 # 業務助理適配性評估
-角色: HR 專家。評估 ${candidateInfo.name} 是否適合高壓業務團隊的助理。
+角色: HR 專家。評估 ${candidateInfo.name} 是否適合高壓業務助理。
 ## 數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
@@ -843,7 +877,7 @@ ${mandatoryOutputFormat}
 
             const getAssistantToAgentPrompt = () => `
 # 助理轉型保險業務 - 潛能引導
-角色: 頂尖保險業主管。任務: 挖掘 ${candidateInfo.name} 的隱藏業務天賦並設計說服話術。
+角色: 王牌通訊處經理。任務: 挖掘 ${candidateInfo.name} 的隱藏業務天賦並設計說服話術。
 ## 數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
@@ -911,39 +945,39 @@ ${mandatoryOutputFormat}
 
             return (
                 <div className={`pb-40 ${isCampusMode ? 'md:pb-32' : 'pb-40'} animate-fade-in`}>
-                <div id="report-container" className={`bg-white ${isCampusMode ? 'p-5 sm:p-8 md:p-12 rounded-xl' : 'md:p-12 p-8 rounded-xl'} shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-slate-200 max-w-4xl mx-auto space-y-10`}>
+                <div id="report-container" className={`bg-white ${isCampusMode ? 'p-4 sm:p-5 md:p-8 rounded-xl' : 'p-4 sm:p-5 md:p-8 rounded-xl'} shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-slate-200 max-w-4xl mx-auto space-y-5 md:space-y-6`}>
                     
                     {/* Header */}
-                    <div className="flex justify-between items-end border-b-4 border-slate-900 pb-6">
+                    <div className="flex justify-between items-end border-b-4 border-slate-900 pb-4">
                         <div>
-                            <h1 className={`${isCampusMode ? 'text-2xl sm:text-3xl' : 'text-3xl'} font-black text-slate-900 tracking-tight`}>性格分析報告</h1>
-                            <p className="text-slate-500 font-extrabold text-xs sm:text-sm mt-1">Personality Analysis Report</p>
+                            <h1 className={`${isCampusMode ? 'text-xl sm:text-2xl' : 'text-2xl'} font-black text-slate-900 tracking-tight`}>性格分析報告</h1>
+                            <p className="text-slate-500 font-extrabold text-[11px] sm:text-xs mt-1">Personality Analysis Report</p>
                         </div>
                         <div className="text-right text-sm text-slate-600">
-                            <div className="text-2xl font-black text-slate-900 mb-1">{candidateInfo.name}</div>
-                            <div className={`flex ${isCampusMode ? 'flex-col sm:flex-row sm:items-center mt-2 font-bold' : 'items-center gap-2'} justify-end text-xs text-slate-500`}>
-                                <div className="flex items-center justify-end gap-1 bg-slate-100 px-2 py-1 rounded-md"><Calendar size={14}/> {candidateInfo.dob}</div>
-                                {isCampusMode && <div className="flex items-center justify-end gap-1 sm:ml-2 bg-slate-100 px-2 py-1 rounded-md"><Clock size={14}/> 作答時間: {formatDuration(duration)}</div>}
+                            <div className="text-xl font-black text-slate-900 mb-1">{candidateInfo.name}</div>
+                            <div className={`flex ${isCampusMode ? 'flex-col sm:flex-row sm:items-center mt-1.5 font-bold' : 'items-center gap-2'} justify-end text-[11px] text-slate-500`}>
+                                <div className="flex items-center justify-end gap-1 bg-slate-100 px-2 py-0.5 rounded-md"><Calendar size={12}/> {candidateInfo.dob}</div>
+                                {isCampusMode && <div className="flex items-center justify-end gap-1 sm:ml-2 bg-slate-100 px-2 py-0.5 rounded-md"><Clock size={12}/> 作答時間: {formatDuration(duration)}</div>}
                             </div>
                         </div>
                     </div>
 
-                    {/* 主要報告內容區塊 */}
-                    <div className="space-y-10">
+                    {/* 主要報告內容區塊 (全面緊湊化) */}
+                    <div className="space-y-5 md:space-y-6">
                         {answers.disc && (
                         <section className="card break-inside-avoid">
-                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-blue-800 pl-3 mb-6 bg-blue-50 py-1 rounded-r-md">1. DISC 風格</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <h3 className="text-lg font-black text-slate-800 border-l-4 border-blue-800 pl-2.5 mb-3 bg-blue-50 py-1 rounded-r-md">1. DISC 風格</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {['D','I','S','C'].map(type => (
                                 <div key={type} className="flex flex-col h-full bg-gray-50 rounded-xl border-2 border-gray-200 overflow-hidden shadow-sm">
-                                <div className="p-4 text-center border-b border-gray-200 bg-white">
-                                    <div className="text-4xl font-black text-slate-800 mb-1">{answers.disc[type] || 0}</div>
-                                    <div className="font-extrabold text-blue-800 text-lg">{type} {DISC_ANIMALS[type].animal}</div>
-                                    <div className="text-xs text-slate-500 mt-1 font-bold">{DISC_ANIMALS[type].type}</div>
+                                <div className="p-2.5 text-center border-b border-gray-200 bg-white">
+                                    <div className="text-3xl font-black text-slate-800 mb-0.5">{answers.disc[type] || 0}</div>
+                                    <div className="font-extrabold text-blue-800 text-sm">{type} {DISC_ANIMALS[type].animal}</div>
+                                    <div className="text-[10px] text-slate-500 mt-0.5 font-bold">{DISC_ANIMALS[type].type}</div>
                                 </div>
-                                <div className="p-4 text-xs text-slate-700 bg-gray-50 flex-1 flex flex-col justify-center text-center">
+                                <div className="p-2.5 text-[11px] text-slate-700 bg-gray-50 flex-1 flex flex-col justify-center text-center">
                                     <p className="font-extrabold mb-1 text-slate-800">{DISC_ANIMALS[type].traits}</p>
-                                    <p className={`opacity-80 leading-relaxed font-bold ${isCampusMode ? 'hidden sm:block' : ''}`}>{DISC_ANIMALS[type].desc}</p>
+                                    <p className={`opacity-80 leading-snug font-bold ${isCampusMode ? 'hidden sm:block' : ''}`}>{DISC_ANIMALS[type].desc}</p>
                                 </div>
                                 </div>
                             ))}
@@ -953,16 +987,16 @@ ${mandatoryOutputFormat}
 
                         {answers.enneagram && (
                         <section className="card break-inside-avoid">
-                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-rose-800 pl-3 mb-6 bg-rose-50 py-1 rounded-r-md">2. 九型人格 (Top 3)</h3>
-                            <div className={`grid ${isCampusMode ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-3'} gap-4`}>
+                            <h3 className="text-lg font-black text-slate-800 border-l-4 border-rose-800 pl-2.5 mb-3 bg-rose-50 py-1 rounded-r-md">2. 九型人格 (Top 3)</h3>
+                            <div className={`grid grid-cols-3 gap-2 sm:gap-3`}>
                             {Object.entries(answers.enneagram).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([type, score]) => (
-                                <div key={type} className="bg-white p-5 rounded-xl border-2 border-rose-100 flex flex-row sm:flex-col justify-between items-center sm:items-start shadow-sm relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-400"></div>
-                                <div className="pl-2">
-                                    <div className="font-black text-rose-900 text-lg mb-1">{ENNEAGRAM_TYPES[type].name}</div>
-                                    <div className="text-sm text-rose-700 font-extrabold">{ENNEAGRAM_TYPES[type].desc}</div>
+                                <div key={type} className="bg-white p-3 rounded-lg border-2 border-rose-100 flex flex-col justify-between items-start shadow-sm relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-rose-400"></div>
+                                <div className="pl-1">
+                                    <div className="font-black text-rose-900 text-sm mb-0.5">{ENNEAGRAM_TYPES[type].name}</div>
+                                    <div className="text-[10px] text-rose-700 font-extrabold leading-tight">{ENNEAGRAM_TYPES[type].desc}</div>
                                 </div>
-                                <div className="text-sm font-black text-rose-900 bg-rose-50 px-3 py-1 rounded-lg border border-rose-200 sm:mt-4">得分: {score}</div>
+                                <div className="text-[11px] font-black text-rose-900 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 mt-2">得分: {score}</div>
                                 </div>
                             ))}
                             </div>
@@ -971,15 +1005,15 @@ ${mandatoryOutputFormat}
 
                         {answers.big5 && (
                         <section className="card break-inside-avoid">
-                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-sky-800 pl-3 mb-6 bg-sky-50 py-1 rounded-r-md">3. 大五人格 (OCEAN)</h3>
-                            <div className="space-y-4 bg-white p-6 rounded-xl border-2 border-slate-100 shadow-sm">
+                            <h3 className="text-lg font-black text-slate-800 border-l-4 border-sky-800 pl-2.5 mb-3 bg-sky-50 py-1 rounded-r-md">3. 大五人格 (OCEAN)</h3>
+                            <div className="space-y-2 bg-white p-4 rounded-xl border-2 border-slate-100 shadow-sm">
                             {Object.entries(answers.big5).map(([dim, score]) => (
-                                <div key={dim} className="flex items-center gap-4">
-                                <div className="w-16 font-black text-slate-700 text-right text-sm sm:text-base">{BIG5_LABELS[dim].name.split(' ')[0]}</div>
-                                <div className="flex-1 bg-slate-100 rounded-full h-5 border border-slate-200 overflow-hidden relative group">
+                                <div key={dim} className="flex items-center gap-3">
+                                <div className="w-14 font-black text-slate-700 text-right text-[11px] sm:text-xs">{BIG5_LABELS[dim].name.split(' ')[0]}</div>
+                                <div className="flex-1 bg-slate-100 rounded-full h-3 border border-slate-200 overflow-hidden relative group">
                                     <div className="bg-sky-600 transition-all duration-1000 rounded-full h-full" style={{width: `${(score/14)*100}%`}}></div>
                                 </div>
-                                <div className="w-8 text-base font-black text-slate-800 text-center bg-slate-50 border border-slate-200 rounded py-0.5">{score}</div>
+                                <div className="w-6 text-sm font-black text-slate-800 text-center bg-slate-50 border border-slate-200 rounded">{score}</div>
                                 </div>
                             ))}
                             </div>
@@ -988,20 +1022,20 @@ ${mandatoryOutputFormat}
 
                         {answers.holland && (
                         <section className="card break-inside-avoid">
-                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-orange-800 pl-3 mb-6 bg-orange-50 py-1 rounded-r-md">4. Holland 職業興趣</h3>
-                            <div className="flex flex-col md:flex-row items-center gap-8 bg-white p-6 rounded-xl border-2 border-orange-100 shadow-sm">
-                            <div className="flex-1 flex justify-center"><RadarChart data={hollandData} size={250} color="#ea580c" /></div>
+                            <h3 className="text-lg font-black text-slate-800 border-l-4 border-orange-800 pl-2.5 mb-3 bg-orange-50 py-1 rounded-r-md">4. Holland 職業興趣</h3>
+                            <div className="flex flex-col md:flex-row items-center gap-4 bg-white p-4 rounded-xl border-2 border-orange-100 shadow-sm">
+                            <div className="flex-1 flex justify-center"><RadarChart data={hollandData} size={180} color="#ea580c" /></div>
                             <div className="flex-1 w-full">
-                                <div className="grid grid-cols-3 gap-3 mb-5">
+                                <div className="grid grid-cols-3 gap-2 mb-3">
                                 {Object.entries(answers.holland).sort((a,b)=>b[1]-a[1]).map(([type, score]) => (
-                                    <div key={type} className="bg-white rounded-xl text-center border-2 border-orange-100 p-3 sm:p-4 shadow-sm">
-                                    <div className="font-extrabold text-orange-900 text-sm mb-1">{HOLLAND_LABELS[type].name.split(' ')[0]}</div>
-                                    <div className="text-2xl sm:text-3xl font-black text-orange-700">{score}</div>
+                                    <div key={type} className="bg-white rounded-lg text-center border-2 border-orange-100 p-2 shadow-sm">
+                                    <div className="font-extrabold text-orange-900 text-[11px] mb-0.5">{HOLLAND_LABELS[type].name.split(' ')[0]}</div>
+                                    <div className="text-xl font-black text-orange-700">{score}</div>
                                     </div>
                                 ))}
                                 </div>
-                                <div className="text-base text-slate-700 font-extrabold bg-orange-50 rounded-xl border border-orange-200 text-center p-5 shadow-sm">
-                                您的 Holland 代碼: <span className="text-2xl sm:text-3xl tracking-widest text-orange-700 ml-2 font-black">{Object.entries(answers.holland).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>x[0]).join('')}</span>
+                                <div className="text-xs text-slate-700 font-extrabold bg-orange-50 rounded-lg border border-orange-200 text-center p-2.5 shadow-sm">
+                                您的 Holland 代碼: <span className="text-xl tracking-widest text-orange-700 ml-2 font-black">{Object.entries(answers.holland).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>x[0]).join('')}</span>
                                 </div>
                             </div>
                             </div>
@@ -1010,15 +1044,15 @@ ${mandatoryOutputFormat}
 
                         {answers.values && (
                         <section className="card break-inside-avoid">
-                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-indigo-800 pl-3 mb-6 bg-indigo-50 py-1 rounded-r-md">5. 工作價值觀 (完整排序)</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <h3 className="text-lg font-black text-slate-800 border-l-4 border-indigo-800 pl-2.5 mb-3 bg-indigo-50 py-1 rounded-r-md">5. 工作價值觀 (完整排序)</h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {Object.entries(answers.values).sort((a,b)=>b[1]-a[1]).map(([k,v], i) => (
-                                <div key={k} className={`flex items-center justify-between px-5 py-4 rounded-xl border-2 ${i < 3 ? 'bg-indigo-50 border-indigo-200 text-indigo-900 font-black shadow-sm' : 'bg-white border-slate-100 text-slate-700 font-bold'}`}>
-                                <div className="flex items-center gap-3">
-                                    <div className={`flex items-center justify-center text-sm font-black w-8 h-8 rounded-lg ${i < 3 ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-200 text-slate-600'}`}>{i + 1}</div>
-                                    <span className="text-base sm:text-lg">{k}</span>
+                                <div key={k} className={`flex items-center justify-between px-3 py-2 rounded-lg border-2 ${i < 3 ? 'bg-indigo-50 border-indigo-200 text-indigo-900 font-black shadow-sm' : 'bg-white border-slate-100 text-slate-700 font-bold'}`}>
+                                <div className="flex items-center gap-2">
+                                    <div className={`flex items-center justify-center text-xs font-black w-5 h-5 rounded ${i < 3 ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>{i + 1}</div>
+                                    <span className="text-sm">{k}</span>
                                 </div>
-                                <span className={`text-sm font-bold ${i < 3 ? 'opacity-80' : 'opacity-50'}`}>分數: {v}</span>
+                                <span className={`text-[10px] font-bold ${i < 3 ? 'opacity-80' : 'opacity-50'}`}>分數: {v}</span>
                                 </div>
                             ))}
                             </div>
@@ -1027,51 +1061,50 @@ ${mandatoryOutputFormat}
 
                         {answers.outcomes && (
                         <section className="card">
-                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-emerald-800 pl-3 mb-6 bg-emerald-50 py-1 rounded-r-md">6. 核心驅動力 (Outcomes)</h3>
-                            <div className="space-y-4">
-                            {answers.outcomes.map((item, i) => (
-                                <div key={item.id} className={`break-inside-avoid flex items-start gap-4 p-5 rounded-xl border-2 transition-all ${i < 3 ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-white border-slate-100'}`}>
-                                <div className={`flex items-center justify-center text-base font-black shrink-0 mt-0.5 w-10 h-10 rounded-lg shadow-sm ${i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-slate-300 text-slate-800' : i === 2 ? 'bg-amber-600 text-white' : 'bg-white text-slate-500 border border-slate-200 shadow-none'}`}>
-                                    {i+1}
-                                </div>
-                                <div className="w-full">
-                                    <span className={`font-black block text-lg mb-1.5 ${i < 3 ? 'text-emerald-900' : 'text-slate-900'}`}>{item.term}</span>
-                                    <span className={`block leading-relaxed font-bold text-sm ${i < 3 ? 'text-emerald-800' : 'text-slate-600'}`}>{item.desc}</span>
-                                    
-                                    {/* 思考問題區塊 */}
-                                    {item.questions && item.questions.length > 0 && (
-                                        <div className={`mt-3 p-3 rounded-lg border ${i < 3 ? 'bg-white/60 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                                            <div className={`text-xs font-black mb-1.5 ${i < 3 ? 'text-emerald-800' : 'text-slate-500'}`}>思考問題：</div>
-                                            <div className="space-y-1">
-                                                {item.questions.map((q, qIdx) => (
-                                                    <div key={qIdx} className={`text-xs font-bold leading-relaxed ${i < 3 ? 'text-emerald-700' : 'text-slate-600'}`}>{q}</div>
-                                                ))}
-                                            </div>
+                            <h3 className="text-lg font-black text-slate-800 border-l-4 border-emerald-800 pl-2.5 mb-3 bg-emerald-50 py-1 rounded-r-md">6. 核心驅動力 (Outcomes 全 12 項)</h3>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {answers.outcomes.map((item, i) => (
+                                    <div key={item.id} className={`break-inside-avoid flex items-start gap-2.5 p-3 rounded-xl border-2 transition-all ${i < 3 ? 'bg-emerald-50 border-emerald-300 shadow-sm' : 'bg-white border-slate-200'}`}>
+                                        <div className={`flex items-center justify-center text-sm font-black shrink-0 mt-0.5 w-6 h-6 rounded shadow-sm ${i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-slate-300 text-slate-800' : i === 2 ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-500 border border-slate-200 shadow-none'}`}>
+                                            {i+1}
                                         </div>
-                                    )}
-                                </div>
-                                </div>
-                            ))}
+                                        <div className="w-full">
+                                            <span className={`font-black block text-sm mb-0.5 ${i < 3 ? 'text-emerald-900' : 'text-slate-800'}`}>{item.term}</span>
+                                            <span className={`block leading-snug font-bold text-[11px] mb-1.5 ${i < 3 ? 'text-emerald-800' : 'text-slate-500'}`}>{item.desc}</span>
+                                            
+                                            {item.questions && item.questions.length > 0 && (
+                                                <div className={`p-2 rounded bg-slate-50/80 border ${i < 3 ? 'border-emerald-200/60' : 'border-slate-100'}`}>
+                                                    <ul className="space-y-0.5">
+                                                        {item.questions.map((q, qIdx) => (
+                                                            <li key={qIdx} className={`text-[10px] font-extrabold leading-tight ${i < 3 ? 'text-emerald-700' : 'text-slate-500'}`}>{q}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </section>
                         )}
 
                         {answers.traits && (
                         <section className="card break-inside-avoid">
-                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-purple-800 pl-3 mb-6 bg-purple-50 py-1 rounded-r-md">7. 成功特質檢核</h3>
-                            <div className="mb-8 p-6 bg-white border-2 border-emerald-100 rounded-xl shadow-sm">
-                                <h4 className="text-lg mb-5 font-black text-emerald-800 flex items-center gap-2"><CheckCircle size={24}/> 您認為您具備的特質 ({answers.traits.length})</h4>
-                                <div className="flex flex-wrap gap-3">
+                            <h3 className="text-lg font-black text-slate-800 border-l-4 border-purple-800 pl-2.5 mb-3 bg-purple-50 py-1 rounded-r-md">7. 成功特質檢核</h3>
+                            <div className="mb-4 p-3 bg-white border-2 border-emerald-100 rounded-xl shadow-sm">
+                                <h4 className="text-sm mb-2 font-black text-emerald-800 flex items-center gap-1.5"><CheckCircle size={18}/> 您認為您具備的特質 ({answers.traits.length})</h4>
+                                <div className="flex flex-wrap gap-2">
                                     {answers.traits.map((t) => (
-                                    <span key={t} className="bg-emerald-50 border border-emerald-300 text-emerald-900 font-extrabold shadow-sm px-4 py-2.5 rounded-lg text-base">{t}</span>
+                                    <span key={t} className="bg-emerald-50 border border-emerald-300 text-emerald-900 font-extrabold shadow-sm px-2 py-1.5 rounded-md text-[11px]">{t}</span>
                                     ))}
                                 </div>
                             </div>
-                            <div className="p-6 bg-slate-50 rounded-xl border-2 border-slate-200">
-                                <h4 className="text-base font-extrabold text-slate-600 mb-4 flex items-center gap-2"><HelpCircle size={20}/> 未勾選項目 / 潛在盲點 ({TRAITS_LIST.length - answers.traits.length})</h4>
-                                <div className="flex flex-wrap gap-2 opacity-80">
+                            <div className="p-3 bg-slate-50 rounded-xl border-2 border-slate-200">
+                                <h4 className="text-xs font-extrabold text-slate-600 mb-2 flex items-center gap-1.5"><HelpCircle size={14}/> 未勾選項目 / 潛在盲點 ({TRAITS_LIST.length - answers.traits.length})</h4>
+                                <div className="flex flex-wrap gap-1.5 opacity-80">
                                     {TRAITS_LIST.filter(t => !answers.traits.includes(t)).map(t => (
-                                    <span key={t} className="px-3 py-1.5 bg-white border border-slate-300 text-slate-500 font-bold rounded-md text-sm">{t}</span>
+                                    <span key={t} className="px-1.5 py-1 bg-white border border-slate-300 text-slate-500 font-bold rounded text-[10px]">{t}</span>
                                     ))}
                                 </div>
                             </div>
@@ -1080,71 +1113,71 @@ ${mandatoryOutputFormat}
 
                         {isCampusMode && reliabilityResults && (
                         <section className="card break-inside-avoid no-print">
-                            <h3 className="text-xl font-black text-slate-800 border-l-4 border-rose-700 pl-3 mb-6 flex items-center gap-2">
-                                <Fingerprint size={24} className="text-rose-700" /> 系統作答真實性評估
+                            <h3 className="text-lg font-black text-slate-800 border-l-4 border-rose-700 pl-2.5 mb-3 flex items-center gap-2">
+                                <Fingerprint size={20} className="text-rose-700" /> 系統作答真實性評估
                             </h3>
-                            <div className={`p-6 rounded-xl border-2 ${reliabilityResults.color} animate-fade-in`}>
-                                <div className="flex items-center justify-between mb-4">
+                            <div className={`p-4 rounded-xl border-2 ${reliabilityResults.color} animate-fade-in`}>
+                                <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-3 rounded-full bg-white shadow-sm"><ShieldAlert size={28} /></div>
+                                        <div className="p-2.5 rounded-full bg-white shadow-sm"><ShieldAlert size={24} /></div>
                                         <div>
-                                            <div className="text-xs font-black opacity-70 uppercase tracking-widest">可靠度等級</div>
-                                            <div className="text-2xl font-black">{reliabilityResults.status}</div>
+                                            <div className="text-[10px] font-black opacity-70 uppercase tracking-widest">可靠度等級</div>
+                                            <div className="text-xl font-black">{reliabilityResults.status}</div>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-xs font-black opacity-70">信任指數</div>
-                                        <div className="text-3xl font-black">{reliabilityResults.score}%</div>
+                                        <div className="text-[10px] font-black opacity-70">信任指數</div>
+                                        <div className="text-2xl font-black">{reliabilityResults.score}%</div>
                                     </div>
                                 </div>
                                 {reliabilityResults.reasons.length > 0 ? (
-                                    <div className="space-y-3 mt-5 pt-5 border-t border-current border-opacity-20">
-                                        <p className="text-sm font-black mb-2 opacity-90">系統偵測到以下異常因子：</p>
+                                    <div className="space-y-2 mt-3 pt-3 border-t border-current border-opacity-20">
+                                        <p className="text-[11px] font-black mb-1 opacity-90">系統偵測到以下異常因子：</p>
                                         {reliabilityResults.reasons.map((r, i) => (
-                                            <div key={i} className="text-base flex items-start gap-2 font-bold">
-                                                <Zap size={18} className="mt-0.5 shrink-0" /><span>{r}</span>
+                                            <div key={i} className="text-xs flex items-start gap-1.5 font-bold">
+                                                <Zap size={14} className="mt-0.5 shrink-0" /><span>{r}</span>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="text-base font-bold flex items-center gap-2 mt-5 pt-5 border-t border-current border-opacity-20 opacity-90">
-                                        <CheckCircle size={20} /> 數據表現一致且作答時間合理，具備極高參考價值。
+                                    <div className="text-xs font-bold flex items-center gap-1.5 mt-3 pt-3 border-t border-current border-opacity-20 opacity-90">
+                                        <CheckCircle size={16} /> 數據表現一致且作答時間合理，具備極高參考價值。
                                     </div>
                                 )}
                             </div>
-                            <p className="mt-4 text-xs text-slate-500 font-bold text-center">本報告由系統演算法自動產生，僅供面試初步篩選參考。</p>
+                            <p className="mt-2 text-[10px] text-slate-400 font-bold text-center">本報告由系統演算法自動產生，僅供面試初步篩選參考。</p>
                         </section>
                         )}
                     </div>
 
                     <section className="card break-inside-avoid page-break-before">
-                    <div className="flex items-center justify-between mb-6 border-b border-gray-200 pb-4">
-                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2"><Brain size={24} className="text-slate-700"/> 8. 深度分析報告</h3>
-                        <button onClick={() => setIsEditingReport(!isEditingReport)} className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-black transition-colors shadow-sm no-print ${isEditingReport ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
-                        {isEditingReport ? <><Eye size={18}/> 預覽渲染</> : <><Edit3 size={18}/> 編輯模式</>}
-                        </button>
-                    </div>
-                    {isEditingReport ? (
-                        <div className="space-y-4 no-print">
-                            <div className="flex justify-between items-end">
-                                <p className="text-sm font-bold text-slate-600">💡 提示：將分析結果貼上至此。</p>
-                                <button onClick={async () => { try { const text = await navigator.clipboard.readText(); if(text) { setAiReportContent(text); showToast("已成功貼上 AI 報告", "success"); } } catch(err) { showToast("請手動長按貼上", "error"); } }} className="flex items-center gap-1.5 text-sm font-bold text-indigo-700 bg-indigo-50 px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm active:scale-95 border border-indigo-200">
-                                    <Clipboard size={16} /> 貼上報告
-                                </button>
-                            </div>
-                            <textarea className={`w-full h-96 p-5 border-2 border-slate-200 ${isCampusMode ? 'rounded-xl shadow-inner' : 'rounded-lg'} focus:ring-4 focus:ring-slate-100 focus:border-slate-800 outline-none text-slate-700 leading-relaxed font-mono text-sm font-bold`} placeholder="請在此貼上內容..." value={aiReportContent} onChange={(e) => setAiReportContent(e.target.value)}></textarea>
+                        <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-3">
+                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Brain size={20} className="text-slate-700"/> 8. 深度分析報告</h3>
+                            <button onClick={() => setIsEditingReport(!isEditingReport)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black transition-colors shadow-sm no-print ${isEditingReport ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
+                            {isEditingReport ? <><Eye size={16}/> 預覽渲染</> : <><Edit3 size={16}/> 編輯模式</>}
+                            </button>
                         </div>
-                    ) : (
-                        <div className="relative group">
-                            <div className="absolute top-0 right-0 no-print">
-                                <button onClick={() => { if(aiReportContent) { handleCopyText(aiReportContent, () => showToast("已複製", "success")); } else showToast("無內容", "error"); }} className="flex items-center gap-1.5 text-sm font-black text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors shadow-sm active:scale-95"><Copy size={16} /> 複製結果</button>
+                        {isEditingReport ? (
+                            <div className="space-y-3 no-print">
+                                <div className="flex justify-between items-end">
+                                    <p className="text-xs font-bold text-slate-600">💡 提示：複製下方指令後，將分析結果貼上至此。</p>
+                                    <button onClick={async () => { try { const text = await navigator.clipboard.readText(); if(text) { setAiReportContent(text); showToast("已成功貼上報告", "success"); } } catch(err) { showToast("請手動長按貼上", "error"); } }} className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors shadow-sm active:scale-95 border border-indigo-200">
+                                        <Clipboard size={14} /> 貼上報告
+                                    </button>
+                                </div>
+                                <textarea className={`w-full h-64 p-4 border-2 border-slate-200 ${isCampusMode ? 'rounded-xl shadow-inner' : 'rounded-lg'} focus:ring-4 focus:ring-slate-100 focus:border-slate-800 outline-none text-slate-700 leading-relaxed font-mono text-xs font-bold`} placeholder="請在此貼上內容..." value={aiReportContent} onChange={(e) => setAiReportContent(e.target.value)}></textarea>
                             </div>
-                            {/* MARKDOWN RENDERED CONTENT */}
-                            <div className="ai-report-content bg-white p-0 text-slate-800 mt-2">
-                                {renderMarkdown(aiReportContent)}
+                        ) : (
+                            <div className="relative group">
+                                <div className="absolute top-0 right-0 no-print">
+                                    <button onClick={() => { if(aiReportContent) { handleCopyText(aiReportContent, () => showToast("已複製", "success")); } else showToast("無內容", "error"); }} className="flex items-center gap-1.5 text-xs font-black text-slate-700 bg-white border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors shadow-sm active:scale-95"><Copy size={14} /> 複製結果</button>
+                                </div>
+                                {/* MARKDOWN RENDERED CONTENT */}
+                                <div className="ai-report-content bg-white p-0 text-slate-800 mt-2">
+                                    {renderMarkdown(aiReportContent)}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
                     </section>
                 </div>
 
@@ -1152,6 +1185,7 @@ ${mandatoryOutputFormat}
                     {isCampusMode ? (
                         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4">
                             <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar flex items-center gap-2">
+                                <button onClick={() => handleCopyText(getSummaryPrompt(), () => showToast("簡介報告指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-black text-sm hover:bg-amber-100 transition-colors active:scale-95 shadow-sm"><Sparkles size={18}/> 測驗簡介報告</button>
                                 <button onClick={() => handleCopyText(getCampusAgentPrompt(), () => showToast("業務潛能分析指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-xl font-black text-sm hover:bg-indigo-100 transition-colors active:scale-95 shadow-sm"><Briefcase size={18}/> 業務潛能分析</button>
                                 <button onClick={() => handleCopyText(getCandidatePrompt(), () => showToast("受測者回饋指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-black text-sm hover:bg-emerald-100 transition-colors active:scale-95 shadow-sm"><User size={18}/> 受測者回饋</button>
                                 <button onClick={() => handleCopyText(getReliabilityPrompt(), () => showToast("真實性深度分析指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl font-black text-sm hover:bg-rose-100 transition-colors active:scale-95 shadow-sm"><Activity size={18}/> 真實性分析</button>
@@ -1175,11 +1209,12 @@ ${mandatoryOutputFormat}
                                     <Printer size={20}/> 列印報告
                                 </button>
                             </div>
-                            <div className="grid grid-cols-2 lg:flex lg:justify-center gap-2">
-                                <button onClick={() => handleCopyText(getStandardAgentPrompt(), () => showToast("業務分析已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-xs sm:text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm text-center"><Briefcase size={18} className="text-indigo-600"/> <span>業務潛能分析</span></button>
-                                <button onClick={() => handleCopyText(getCandidatePrompt(), () => showToast("受測者回饋已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-xs sm:text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm text-center"><User size={18} className="text-emerald-600"/> <span>受測者回饋</span></button>
-                                <button onClick={() => handleCopyText(getSalesAssistantPrompt(), () => showToast("助理適配分析已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-xs sm:text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm text-center"><Users size={18} className="text-orange-600"/> <span>助理適配分析</span></button>
-                                <button onClick={() => handleCopyText(getAssistantToAgentPrompt(), () => showToast("轉型引導已複製", "success"))} className="flex flex-col lg:flex-row items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-xs sm:text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm text-center"><TrendingUp size={18} className="text-rose-600"/> <span>助理轉正引導</span></button>
+                            <div className="flex flex-wrap justify-center gap-2">
+                                <button onClick={() => handleCopyText(getSummaryPrompt(), () => showToast("簡介報告指令已複製", "success"))} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm"><Sparkles size={16} className="text-amber-500"/> <span>測驗簡介報告</span></button>
+                                <button onClick={() => handleCopyText(getStandardAgentPrompt(), () => showToast("業務分析指令已複製", "success"))} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm"><Briefcase size={16} className="text-indigo-600"/> <span>業務潛能分析</span></button>
+                                <button onClick={() => handleCopyText(getCandidatePrompt(), () => showToast("受測者回饋指令已複製", "success"))} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm"><User size={16} className="text-emerald-600"/> <span>受測者回饋</span></button>
+                                <button onClick={() => handleCopyText(getSalesAssistantPrompt(), () => showToast("助理適配分析指令已複製", "success"))} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm"><Users size={16} className="text-orange-600"/> <span>助理適配分析</span></button>
+                                <button onClick={() => handleCopyText(getAssistantToAgentPrompt(), () => showToast("轉型引導指令已複製", "success"))} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm"><TrendingUp size={16} className="text-rose-600"/> <span>助理轉正引導</span></button>
                             </div>
                         </div>
                     )}
@@ -1278,9 +1313,9 @@ ${mandatoryOutputFormat}
                 const next = godModeClicks + 1; setGodModeClicks(next);
                 if (next === 5) { 
                     if (systemMode === 'campus') {
-                        setCandidateInfo({ name: '測試員 DEMO (校園)', dob: '1999-01-01' });
+                        setCandidateInfo(DEMO_CANDIDATE);
                         setQuizConfig({ modules: MODULES_MAP, timestamp: Date.now() });
-                        setAnswers({ disc: { D: 6, I: 3, S: 1, C: 0 }, values: { "升遷": 5, "成就感": 8, "待遇": 6, "自主性": 2, "環境": 4, "同事": 3, "自我成長": 7 }, outcomes: OUTCOMES_ITEMS.slice(), traits: TRAITS_LIST.slice(0, 10), enneagram: { "1": 1, "2": 0, "3": 5, "4": 0, "5": 1, "6": 2, "7": 4, "8": 3, "9": 1 }, big5: { E: 6, A: 7, C: 8, N: 3, O: 9 }, holland: { R: 2, I: 4, A: 5, S: 3, E: 5, C: 1 } });
+                        setAnswers(DEMO_ANSWERS);
                         setQuizDuration(380); setView('result'); showToast("載入 Demo (校園版)", "success");
                     } else {
                         if (!isGodMode) { setIsGodMode(true); showToast("管理員模式已解鎖", "success"); }
@@ -1295,8 +1330,8 @@ ${mandatoryOutputFormat}
                 if (inputCode === '1111') {
                     if (!isGodMode) { showToast("權限不足：請先解鎖管理員模式", "error"); return; }
                     setQuizConfig({ modules: MODULES_MAP, timestamp: Date.now() });
-                    setCandidateInfo({ name: '測試員 DEMO (標準)', dob: '1995-01-01' });
-                    setAnswers({ disc: { D: 6, I: 3, S: 1, C: 0 }, values: { "升遷": 5, "成就感": 8, "待遇": 6, "自主性": 2, "環境": 4, "同事": 3, "自我成長": 7 }, outcomes: OUTCOMES_ITEMS.slice(), traits: TRAITS_LIST.slice(0, 10), enneagram: { "1": 1, "2": 0, "3": 5, "4": 0, "5": 1, "6": 2, "7": 4, "8": 3, "9": 1 }, big5: { E: 6, A: 7, C: 8, N: 3, O: 9 }, holland: { R: 2, I: 4, A: 5, S: 3, E: 5, C: 1 } });
+                    setCandidateInfo(DEMO_CANDIDATE);
+                    setAnswers(DEMO_ANSWERS);
                     setView('result'); showToast("Demo 數據已載入", "success"); return;
                 }
                 const data = safeDecode(inputCode);
@@ -1441,7 +1476,7 @@ ${mandatoryOutputFormat}
                             </div>
                             <div className="flex gap-5">
                                 <div className="w-10 h-10 bg-slate-800 text-white rounded-full flex items-center justify-center font-black shrink-0 text-base shadow-md">3</div>
-                                <div><h3 className="font-black text-lg mb-2 text-slate-800">解析報告 (面試官)</h3><p className="text-slate-600 text-base font-bold leading-relaxed">拿到 Result Code 後貼回首頁，系統將顯示視覺化報告及 AI 指令供您深度分析。</p></div>
+                                <div><h3 className="font-black text-lg mb-2 text-slate-800">解析報告 (面試官)</h3><p className="text-slate-600 text-base font-bold leading-relaxed">拿到 Result Code 後貼回首頁，系統將顯示視覺化報告及系統指令供您深度分析。</p></div>
                             </div>
                         </div>
                     </div>
@@ -1490,4 +1525,3 @@ ${mandatoryOutputFormat}
     </script>
 </body>
 </html>
-
