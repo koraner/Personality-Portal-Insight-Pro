@@ -56,7 +56,7 @@
             font-weight: 600;
         }
 
-        .custom-scroller::-webkit-scrollbar { width: 6px; }
+        .custom-scroller::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scroller::-webkit-scrollbar-track { background: transparent; }
         .custom-scroller::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scroller::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
@@ -91,30 +91,28 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* 列印與 PDF 輸出專用排版 - 終極修復版 */
+        /* 列印與 PDF 輸出專用排版 */
         @media print {
-            @page { margin: 10mm; size: A4 portrait; }
+            @page { margin: 8mm; size: A4 portrait; }
             body { background-color: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .no-print { display: none !important; }
             #report-container { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
-            /* 防斷頁設定 */
-            .card { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 20px !important; }
+            .card { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 12px !important; }
             .page-break-before { page-break-before: always !important; }
             h1, h2, h3 { page-break-after: avoid !important; break-after: avoid !important; }
         }
         
-        /* html2pdf.js 生成時的專用 class，強制固定寬度解決排版跑掉與裁切問題 */
         .pdf-export-mode {
             background-color: white !important;
-            padding: 40px 30px !important;
-            width: 820px !important; /* 強制寬度，完美契合 A4 比例 */
-            max-width: 820px !important;
+            padding: 24px 20px !important;
+            width: 800px !important;
+            max-width: 800px !important;
             margin: 0 auto !important;
             box-sizing: border-box !important;
         }
         .pdf-export-mode .no-print { display: none !important; }
         .pdf-export-mode #report-container { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; max-width: none !important; }
-        .pdf-export-mode .card { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 24px !important; }
+        .pdf-export-mode .card { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 16px !important; }
         .pdf-export-mode .page-break-before { page-break-before: always !important; }
     </style>
 </head>
@@ -130,7 +128,7 @@
             ArrowRight, Brain, Target, ListOrdered, Plus, X, ChevronUp, ChevronDown, 
             Calendar, Clock, Briefcase, Lock, PieChart, Activity, Compass, BookOpen, 
             Edit3, Eye, Layers, FileText, HelpCircle, FilePlus, Info, RefreshCw,
-            Users, TrendingUp, List, Clipboard, Zap, ShieldAlert, Fingerprint, LogOut, Download, Sparkles
+            Users, TrendingUp, List, Clipboard, Zap, ShieldAlert, Fingerprint, LogOut, Download, Sparkles, MessageCircle
         } from 'lucide-react';
 
         // --- DATA & CONSTANTS ---
@@ -163,7 +161,6 @@
             { A: "同事", B: "待遇" }, { A: "自主性", B: "同事" }, { A: "環境", B: "自主性" }
         ];
 
-        // 確保與提供的檔案文字完全一致，並補上問卷內容
         const OUTCOMES_ITEMS = [
             { id: "O1", term: "獨立", desc: "依照自己的意願運作自己的業務，做自己的老闆。", questions: ["• 你曾感到被限制？", "• 你覺得被規定和繁瑣手續打敗嗎？", "• 你是否經常與主管意見不同？"] },
             { id: "O2", term: "受肯定", desc: "工作表現優良，能得到別人的讚賞，如在公開場合或演講中被表揚。", questions: ["• 「贏」對您而言有多重要？", "• 當別人獲得肯定時，你的感覺如何？", "• 為了贏得肯定，你會全力以赴嗎？"] },
@@ -353,7 +350,6 @@
             } catch (err) { if (onError) onError(); }
         };
 
-        // 全域列印函數
         const handleSafePrint = (setToast, candidateName) => {
             const printContent = document.getElementById('report-container');
             if (!printContent) return;
@@ -371,7 +367,6 @@
 
             const twConfig = document.getElementById('tw-config') ? document.getElementById('tw-config').outerHTML : '';
             
-            // 使用字串相加避免 html parser 提前截斷 script
             win.document.write(
                 '<!DOCTYPE html>\n' +
                 '<html>\n' +
@@ -381,19 +376,20 @@
                 '    ' + twConfig + '\n' +
                 '    ' + styles + '\n' +
                 '    <style>\n' +
-                '        @media print { @page { margin: 10mm; size: A4 portrait; } }\n' +
-                '        body { padding: 30px; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: "Iansui", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif !important; font-weight: 600; }\n' +
+                '        @media print { @page { margin: 8mm; size: A4 portrait; } }\n' +
+                '        body { padding: 16px; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-family: "Iansui", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif !important; font-weight: 600; font-size: 14px !important;}\n' +
                 '        .no-print { display: none !important; }\n' +
                 '        .print-only { display: block !important; }\n' +
                 '        #report-container { box-shadow: none !important; border: none !important; margin: 0 !important; max-width: 100% !important; padding: 0 !important; width: 100% !important; }\n' +
-                '        .card { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 20px !important; }\n' +
+                '        .card { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 12px !important; }\n' +
+                '        h3 { margin-bottom: 12px !important; }\n' +
                 '        .page-break-before { page-break-before: always !important; }\n' +
                 '        h1, h2, h3 { page-break-after: avoid !important; break-after: avoid !important; }\n' +
                 '    </style>\n' +
                 '</head>\n' +
                 '<body>\n' +
                 '    ' + printContent.outerHTML + '\n' +
-                '    <div style="margin-top:20px; font-size:12px; color:#666; text-align:center;">Personality Portal Analysis Report • Generated on ' + new Date().toLocaleString() + '</div>\n' +
+                '    <div style="margin-top:16px; font-size:11px; color:#666; text-align:center;">Personality Portal Analysis Report • Generated on ' + new Date().toLocaleString() + '</div>\n' +
                 '    <script>\n' +
                 '        window.onload = function() {\n' +
                 '            setTimeout(() => { window.print(); window.close(); }, 800);\n' +
@@ -518,7 +514,6 @@
                                 <Plus size={isCampusMode ? 24 : 20} className={`text-slate-300 group-hover:text-emerald-500 ${isCampusMode && 'bg-slate-50 rounded-full p-1'}`}/>
                             </div>
                             <p className="text-xs font-bold text-slate-600 leading-relaxed mb-3">{item.desc}</p>
-                            {/* 思考問題區塊 */}
                             {item.questions && item.questions.length > 0 && (
                                 <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                                     <div className="text-[11px] font-black text-slate-500 mb-1">思考問題：</div>
@@ -794,6 +789,9 @@
 `.trim();
 
             const mandatoryOutputFormat = `## 輸出格式 (Markdown)\n⚠️ 非常重要：請務必將您產出的「整份最終報告內容」完全包裝在一個純文字程式碼區塊中 (也就是在開頭加上 \`\`\`text ，在結尾加上 \`\`\`)。請依照以下結構輸出：`;
+            
+            // 加入強制拔除廢話的絕對禁令
+            const negativePrompt = `\n\n⚠️ 絕對禁止：不要有任何開場白、問候語或自我介紹（例如「你好，我是...」），請直接從「1. [標題]」開始輸出內容。`;
 
             const getSummaryPrompt = () => `
 # 性格與潛能簡介報告 (給受測者的破冰回饋)
@@ -803,7 +801,7 @@
 請「完全且僅能」基於下方的測驗數據分析，不受過往對話影響。
 ## 測驗數據
 ${candidateDataStr}
-${mandatoryOutputFormat}
+${mandatoryOutputFormat}${negativePrompt}
 `.trim();
 
             const getCandidatePrompt = () => `
@@ -818,22 +816,45 @@ ${mandatoryOutputFormat}
 3. **[職涯方向建議]**: 
    - 請務必列出 **5 到 7 個**最適合的具體職業或領域。
    - **推薦原因分析**：針對每一個職業，請「具體說明」是基於哪些測驗數據得出的結論（例如：「因為 DISC 的 D 型偏高，且 Outcomes 看重『獨立』與『金錢』，所以推薦此職業...」），請務必將客觀數據指標與職業特性做深度連結。
-4. **[成長備忘錄]**: 心理障礙克服與原子習慣建議。
+4. **[成長備忘錄]**: 心理障礙克服與原子習慣建議。${negativePrompt}
 `.trim();
 
-            const getCampusAgentPrompt = () => `
-# 專業保險業務潛能評估報告 (校園版)
-角色: 頂尖保險業主管。任務: 分析 ${candidateInfo.name} 的潛力。
+            const getCombinedAgentPrompt = () => `
+# 專業保險業務潛能評估報告
+角色: 頂尖保險業主管。任務: 分析 ${candidateInfo.name} 成為高績效保險業務員的潛力。
 請「完全且僅能」基於下方測驗數據分析。
 ## 數據
-- 系統預判可信度: ${reliabilityResults?.status}
-${candidateDataStr}
+${isCampusMode ? `- 系統預判可信度: ${reliabilityResults?.status}\n` : ''}${candidateDataStr}
 ${mandatoryOutputFormat}
-1. **[銷售潛力總結]**: 定義其風格。
+1. **[銷售潛力總結]**: 用保險業語言定義其風格。
 2. **[保險業適配度]**: 面對拒絕的挫折力與經營耐心。
 3. **[MDRT 潛質]**: 評估抗壓、連結力、自律。
 4. **[致命傷與激勵因子]**: 陣亡原因與激勵誘因。
 5. **[增員成交戰術]**: 打動他的願景與預判拒絕的化解話術。
+6. **[黃金 90 天輔導重點]**: 前三個月如何讓他存活並建立信心。${negativePrompt}
+`.trim();
+
+            const getInterviewPrompt = () => `
+# 面試實戰提問清單
+角色: 資深面試官與行為分析師。任務: 針對 ${candidateInfo.name} 的測驗數據，設計面試提問。
+請「完全且僅能」基於下方測驗數據。
+## 數據
+${candidateDataStr}
+${mandatoryOutputFormat}
+請強制尋找「數據衝突」或「性格矛盾點」（例如高I但低D，或是看重金錢但偏S型），並以此為切入點設計問題。
+請列出 3~5 個「尖銳且具針對性的面試問題」，並附上面試官該如何評估對方回答的「觀察重點」。${negativePrompt}
+`.trim();
+
+            const getManagementPrompt = () => `
+# 專屬帶兵與溝通說明書
+角色: 組織心理學家與高階主管教練。任務: 提供 ${candidateInfo.name} 加入團隊後的管理指南。
+請「完全且僅能」基於下方測驗數據。
+## 數據
+${candidateDataStr}
+${mandatoryOutputFormat}
+1. **[溝通地雷]**: 絕對不能對他說什麼話？（請依據 DISC 與九型人格具體說明）
+2. **[績效復甦指南]**: 當他業績低迷、陷入低潮時，主管應該用什麼方式（如畫大餅、陪同作業、給予獨處空間等）來拉他一把？
+3. **[日常驅動策略]**: 如何在日常管理中持續點燃他的 Outcomes 核心驅動力？${negativePrompt}
 `.trim();
 
             const getReliabilityPrompt = () => `
@@ -846,21 +867,7 @@ ${candidateDataStr}
 ${mandatoryOutputFormat}
 1. **[作答可信度總評]**: (高/中/低)及理由。
 2. **[數據一致性偵測]**: 邏輯衝突點。
-3. **[面試驗證建議]**: 1-2 個尖銳的面試提問。
-`.trim();
-
-            const getStandardAgentPrompt = () => `
-# 專業保險業務潛能評估報告
-角色: 保經處經理與組織心理學家。任務: 分析 ${candidateInfo.name} 成為 MDRT (百萬圓桌) 保險業務員的潛力。
-## 數據
-${candidateDataStr}
-${mandatoryOutputFormat}
-1. **[銷售潛力]**: 風格定義。
-2. **[保經 vs 保險員]**: 單一公司或保經適配。
-3. **[MDRT 潛質]**: 抗壓與自律。
-4. **[留任風險與激勵]**: 誘因。
-5. **[黃金 90 天策略]**: 輔導重點。
-6. **[Closing 戰術]**: 話術。
+3. **[面試驗證建議]**: 1-2 個尖銳的面試提問。${negativePrompt}
 `.trim();
 
             const getSalesAssistantPrompt = () => `
@@ -872,7 +879,7 @@ ${mandatoryOutputFormat}
 1. **[行政細心與穩定]**: 耐心與精確度。
 2. **[業務支援]**: 安撫客戶、溝通能力。
 3. **[管理適配]**: 哪種主管適合帶他。
-4. **[潛在風險]**: 抗壓與厭倦度。
+4. **[潛在風險]**: 抗壓與厭倦度。${negativePrompt}
 `.trim();
 
             const getAssistantToAgentPrompt = () => `
@@ -883,7 +890,7 @@ ${candidateDataStr}
 ${mandatoryOutputFormat}
 1. **[被埋沒的業務天賦]**: 性格亮點。
 2. **[為何不該只做助理]**: 發展限制。
-3. **[推坑轉型劇本]**: 開場、安撫恐懼、願景描繪。
+3. **[推坑轉型劇本]**: 開場、安撫恐懼、願景描繪。${negativePrompt}
 `.trim();
 
             const hollandData = answers.holland ? [
@@ -944,7 +951,7 @@ ${mandatoryOutputFormat}
             };
 
             return (
-                <div className={`pb-40 ${isCampusMode ? 'md:pb-32' : 'pb-40'} animate-fade-in`}>
+                <div className={`pb-44 md:pb-40 animate-fade-in`}>
                 <div id="report-container" className={`bg-white ${isCampusMode ? 'p-4 sm:p-5 md:p-8 rounded-xl' : 'p-4 sm:p-5 md:p-8 rounded-xl'} shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-slate-200 max-w-4xl mx-auto space-y-5 md:space-y-6`}>
                     
                     {/* Header */}
@@ -1063,6 +1070,7 @@ ${mandatoryOutputFormat}
                         <section className="card">
                             <h3 className="text-lg font-black text-slate-800 border-l-4 border-emerald-800 pl-2.5 mb-3 bg-emerald-50 py-1 rounded-r-md">6. 核心驅動力 (Outcomes 全 12 項)</h3>
                             
+                            {/* 雙欄網格左右並排排列 */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {answers.outcomes.map((item, i) => (
                                     <div key={item.id} className={`break-inside-avoid flex items-start gap-2.5 p-3 rounded-xl border-2 transition-all ${i < 3 ? 'bg-emerald-50 border-emerald-300 shadow-sm' : 'bg-white border-slate-200'}`}>
@@ -1073,6 +1081,7 @@ ${mandatoryOutputFormat}
                                             <span className={`font-black block text-sm mb-0.5 ${i < 3 ? 'text-emerald-900' : 'text-slate-800'}`}>{item.term}</span>
                                             <span className={`block leading-snug font-bold text-[11px] mb-1.5 ${i < 3 ? 'text-emerald-800' : 'text-slate-500'}`}>{item.desc}</span>
                                             
+                                            {/* 緊湊型思考問題區塊 */}
                                             {item.questions && item.questions.length > 0 && (
                                                 <div className={`p-2 rounded bg-slate-50/80 border ${i < 3 ? 'border-emerald-200/60' : 'border-slate-100'}`}>
                                                     <ul className="space-y-0.5">
@@ -1181,43 +1190,41 @@ ${mandatoryOutputFormat}
                     </section>
                 </div>
 
-                <div className={`fixed bottom-0 left-0 right-0 ${isCampusMode ? 'p-3 sm:p-4' : 'p-3'} shadow-[0_-10px_40px_rgba(0,0,0,0.1)] bg-white/95 backdrop-blur-md border-t border-gray-200 z-50 no-print`}>
-                    {isCampusMode ? (
-                        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4">
-                            <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar flex items-center gap-2">
-                                <button onClick={() => handleCopyText(getSummaryPrompt(), () => showToast("簡介報告指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-black text-sm hover:bg-amber-100 transition-colors active:scale-95 shadow-sm"><Sparkles size={18}/> 測驗簡介報告</button>
-                                <button onClick={() => handleCopyText(getCampusAgentPrompt(), () => showToast("業務潛能分析指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-xl font-black text-sm hover:bg-indigo-100 transition-colors active:scale-95 shadow-sm"><Briefcase size={18}/> 業務潛能分析</button>
-                                <button onClick={() => handleCopyText(getCandidatePrompt(), () => showToast("受測者回饋指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-black text-sm hover:bg-emerald-100 transition-colors active:scale-95 shadow-sm"><User size={18}/> 受測者回饋</button>
-                                <button onClick={() => handleCopyText(getReliabilityPrompt(), () => showToast("真實性深度分析指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-2 px-5 py-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl font-black text-sm hover:bg-rose-100 transition-colors active:scale-95 shadow-sm"><Activity size={18}/> 真實性分析</button>
-                            </div>
-                            <div className="flex gap-2 w-full md:w-auto flex-shrink-0">
-                                <button onClick={handleExportPDF} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3.5 bg-indigo-600 text-white rounded-xl font-black text-sm hover:bg-indigo-700 transition-all shadow-md active:scale-95">
-                                    <Download size={20}/> 輸出 PDF
-                                </button>
-                                <button onClick={handlePrintClick} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3.5 bg-slate-900 text-white rounded-xl font-black text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
-                                    <Printer size={20}/> 列印
-                                </button>
-                            </div>
+                <div className={`fixed bottom-0 left-0 right-0 ${isCampusMode ? 'p-3' : 'p-3'} shadow-[0_-10px_40px_rgba(0,0,0,0.1)] bg-white/95 backdrop-blur-md border-t border-gray-200 z-50 no-print`}>
+                    {/* 使用可水平滑動的設計來容納更多按鈕 */}
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
+                            <button onClick={() => handleCopyText(getSummaryPrompt(), () => showToast("簡介報告指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg font-black text-xs sm:text-sm hover:bg-amber-100 transition-colors active:scale-95 shadow-sm"><Sparkles size={16}/> 測驗簡介報告</button>
+                            <button onClick={() => handleCopyText(getCombinedAgentPrompt(), () => showToast("業務分析指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-lg font-black text-xs sm:text-sm hover:bg-indigo-100 transition-colors active:scale-95 shadow-sm"><Briefcase size={16}/> 業務潛能分析</button>
+                            <button onClick={() => handleCopyText(getInterviewPrompt(), () => showToast("面試提問指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-red-50 border border-red-200 text-red-800 rounded-lg font-black text-xs sm:text-sm hover:bg-red-100 transition-colors active:scale-95 shadow-sm"><MessageCircle size={16}/> 面試實戰提問</button>
+                            
+                            {!isCampusMode && (
+                                <button onClick={() => handleCopyText(getManagementPrompt(), () => showToast("帶兵說明書指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-teal-50 border border-teal-200 text-teal-800 rounded-lg font-black text-xs sm:text-sm hover:bg-teal-100 transition-colors active:scale-95 shadow-sm"><Compass size={16}/> 專屬帶兵說明書</button>
+                            )}
+
+                            <button onClick={() => handleCopyText(getCandidatePrompt(), () => showToast("受測者回饋指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg font-black text-xs sm:text-sm hover:bg-emerald-100 transition-colors active:scale-95 shadow-sm"><User size={16}/> 受測者回饋</button>
+                            
+                            {!isCampusMode && (
+                                <>
+                                    <button onClick={() => handleCopyText(getSalesAssistantPrompt(), () => showToast("助理適配分析已複製", "success"))} className="flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-orange-50 border border-orange-200 text-orange-800 rounded-lg font-black text-xs sm:text-sm hover:bg-orange-100 transition-colors active:scale-95 shadow-sm"><Users size={16}/> 助理適配分析</button>
+                                    <button onClick={() => handleCopyText(getAssistantToAgentPrompt(), () => showToast("轉型引導已複製", "success"))} className="flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg font-black text-xs sm:text-sm hover:bg-rose-100 transition-colors active:scale-95 shadow-sm"><TrendingUp size={16}/> 助理轉正引導</button>
+                                </>
+                            )}
+                            
+                            {isCampusMode && (
+                                <button onClick={() => handleCopyText(getReliabilityPrompt(), () => showToast("真實性分析指令已複製", "success"))} className="flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg font-black text-xs sm:text-sm hover:bg-rose-100 transition-colors active:scale-95 shadow-sm"><Activity size={16}/> 真實性分析</button>
+                            )}
                         </div>
-                    ) : (
-                        <div className="max-w-4xl mx-auto">
-                            <div className="flex justify-center gap-3 mb-3">
-                                <button onClick={handleExportPDF} className="flex-1 md:flex-none min-w-[200px] flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-xl font-black hover:bg-indigo-700 transition-all shadow-md active:scale-95">
-                                    <Download size={20}/> 輸出 PDF
-                                </button>
-                                <button onClick={handlePrintClick} className="flex-1 md:flex-none min-w-[200px] flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-900 text-white rounded-xl font-black hover:bg-slate-800 transition-all shadow-md active:scale-95">
-                                    <Printer size={20}/> 列印報告
-                                </button>
-                            </div>
-                            <div className="flex flex-wrap justify-center gap-2">
-                                <button onClick={() => handleCopyText(getSummaryPrompt(), () => showToast("簡介報告指令已複製", "success"))} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm"><Sparkles size={16} className="text-amber-500"/> <span>測驗簡介報告</span></button>
-                                <button onClick={() => handleCopyText(getStandardAgentPrompt(), () => showToast("業務分析指令已複製", "success"))} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm"><Briefcase size={16} className="text-indigo-600"/> <span>業務潛能分析</span></button>
-                                <button onClick={() => handleCopyText(getCandidatePrompt(), () => showToast("受測者回饋指令已複製", "success"))} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm"><User size={16} className="text-emerald-600"/> <span>受測者回饋</span></button>
-                                <button onClick={() => handleCopyText(getSalesAssistantPrompt(), () => showToast("助理適配分析指令已複製", "success"))} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm"><Users size={16} className="text-orange-600"/> <span>助理適配分析</span></button>
-                                <button onClick={() => handleCopyText(getAssistantToAgentPrompt(), () => showToast("轉型引導指令已複製", "success"))} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-lg font-black text-sm hover:bg-slate-50 transition-all active:scale-95 shadow-sm"><TrendingUp size={16} className="text-rose-600"/> <span>助理轉正引導</span></button>
-                            </div>
+                        
+                        <div className="flex gap-2 w-full mt-1">
+                            <button onClick={handleExportPDF} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg font-black text-sm hover:bg-indigo-700 transition-all shadow-md active:scale-95">
+                                <Download size={18}/> 輸出 PDF
+                            </button>
+                            <button onClick={handlePrintClick} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-lg font-black text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
+                                <Printer size={18}/> 列印
+                            </button>
                         </div>
-                    )}
+                    </div>
                 </div>
                 </div>
             );
@@ -1241,9 +1248,9 @@ ${mandatoryOutputFormat}
                 const nextClicks = secretClicks + 1;
                 setSecretClicks(nextClicks);
                 if (nextClicks === 5) {
-                    setCandidateInfo({ name: '測試員 DEMO (校園)', dob: '1999-01-01' });
+                    setCandidateInfo(DEMO_CANDIDATE);
                     setQuizConfig({ modules: MODULES_MAP, timestamp: Date.now() });
-                    setAnswers({ disc: { D: 6, I: 3, S: 1, C: 0 }, values: { "升遷": 5, "成就感": 8, "待遇": 6, "自主性": 2, "環境": 4, "同事": 3, "自我成長": 7 }, outcomes: OUTCOMES_ITEMS.slice(), traits: TRAITS_LIST.slice(0, 10), enneagram: { "1": 1, "2": 0, "3": 5, "4": 0, "5": 1, "6": 2, "7": 4, "8": 3, "9": 1 }, big5: { E: 6, A: 7, C: 8, N: 3, O: 9 }, holland: { R: 2, I: 4, A: 5, S: 3, E: 5, C: 1 } });
+                    setAnswers(DEMO_ANSWERS);
                     setQuizDuration(380); setView('result'); showToast("載入 Demo (校園版)", "success");
                     setSecretClicks(0);
                 }
