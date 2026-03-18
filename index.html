@@ -350,6 +350,7 @@
             } catch (err) { if (onError) onError(); }
         };
 
+        // 全域列印函數
         const handleSafePrint = (setToast, candidateName) => {
             const printContent = document.getElementById('report-container');
             if (!printContent) return;
@@ -372,7 +373,7 @@
                 '<html>\n' +
                 '<head>\n' +
                 '    <title>' + docTitle + '</title>\n' +
-                '    <script src="https://cdn.tailwindcss.com"><' + '/script>\n' +
+                '    <script src="https://cdn.tailwindcss.com"><\/script>\n' +
                 '    ' + twConfig + '\n' +
                 '    ' + styles + '\n' +
                 '    <style>\n' +
@@ -394,7 +395,7 @@
                 '        window.onload = function() {\n' +
                 '            setTimeout(() => { window.print(); window.close(); }, 800);\n' +
                 '        };\n' +
-                '    <' + '/script>\n' +
+                '    <\/script>\n' +
                 '</body>\n' +
                 '</html>'
             );
@@ -514,6 +515,7 @@
                                 <Plus size={isCampusMode ? 24 : 20} className={`text-slate-300 group-hover:text-emerald-500 ${isCampusMode && 'bg-slate-50 rounded-full p-1'}`}/>
                             </div>
                             <p className="text-xs font-bold text-slate-600 leading-relaxed mb-3">{item.desc}</p>
+                            {/* 思考問題區塊 */}
                             {item.questions && item.questions.length > 0 && (
                                 <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                                     <div className="text-[11px] font-black text-slate-500 mb-1">思考問題：</div>
@@ -821,17 +823,18 @@ ${mandatoryOutputFormat}
 
             const getCombinedAgentPrompt = () => `
 # 專業保險業務潛能評估報告
-角色: 頂尖保險業主管。任務: 分析 ${candidateInfo.name} 成為高績效保險業務員的潛力。
-請「完全且僅能」基於下方測驗數據分析。
+角色: 頂尖且極度嚴格的保險業主管。任務: 犀利剖析 ${candidateInfo.name} 是否真的能成為高績效保險業務員。
+請「完全且僅能」基於下方測驗數據分析，拒絕說好聽話，給我最真實、最血淋淋的評價。
 ## 數據
 ${isCampusMode ? `- 系統預判可信度: ${reliabilityResults?.status}\n` : ''}${candidateDataStr}
 ${mandatoryOutputFormat}
-1. **[銷售潛力總結]**: 用保險業語言定義其風格。
-2. **[保險業適配度]**: 面對拒絕的挫折力與經營耐心。
-3. **[MDRT 潛質]**: 評估抗壓、連結力、自律。
-4. **[致命傷與激勵因子]**: 陣亡原因與激勵誘因。
-5. **[增員成交戰術]**: 打動他的願景與預判拒絕的化解話術。
-6. **[黃金 90 天輔導重點]**: 前三個月如何讓他存活並建立信心。${negativePrompt}
+1. **[一針見血：他到底適不適合做業務？]**: 請給出極度犀利的結論（如：天生戰將 / 堪用但需調教 / 炮灰體質建議放生），並用一句話點出最核心的致命傷或絕對優勢。
+2. **[銷售風格與戰力]**: 用保險業語言精準定義其開發與經營風格。
+3. **[真實抗挫力評估]**: 面對「連續 50 次陌生開發被拒絕」時，他真實的心理承受度與復原期。
+4. **[MDRT 潛質]**: 評估其抗壓性、陌生連結力與高度自律性。
+5. **[陣亡危機與激勵解藥]**: 他最容易在什麼情境下陣亡（流失）？主管必須掐住他什麼樣的慾望才能逼出業績？
+6. **[一擊必殺增員戰術]**: 針對他的性格痛點，給出能讓他無法拒絕的增員說服話術。
+7. **[黃金 90 天輔導重點]**: 前三個月如何讓他存活並建立信心。${negativePrompt}
 `.trim();
 
             const getInterviewPrompt = () => `
@@ -903,7 +906,7 @@ ${mandatoryOutputFormat}
                 { label: '助理適配分析', icon: Users, color: 'orange', prompt: getSalesAssistantPrompt(), show: !isCampusMode },
                 { label: '助理轉正引導', icon: TrendingUp, color: 'rose', prompt: getAssistantToAgentPrompt(), show: !isCampusMode },
                 { label: '真實性分析', icon: Activity, color: 'rose', prompt: getReliabilityPrompt(), show: isCampusMode }
-            ].filter(btn => btn.show); // 根據是否為校園模式，自動過濾掉不需要的按鈕
+            ].filter(btn => btn.show);
 
             // Tailwind CSS 動態色彩對照表，確保樣式能被正確編譯
             const colorStyles = {
@@ -974,7 +977,7 @@ ${mandatoryOutputFormat}
             };
 
             return (
-                <div className={`pb-44 md:pb-40 animate-fade-in`}>
+                <div className={`pb-48 md:pb-44 animate-fade-in`}>
                 <div id="report-container" className={`bg-white ${isCampusMode ? 'p-4 sm:p-5 md:p-8 rounded-xl' : 'p-4 sm:p-5 md:p-8 rounded-xl'} shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-slate-200 max-w-4xl mx-auto space-y-5 md:space-y-6`}>
                     
                     {/* Header */}
@@ -1205,40 +1208,40 @@ ${mandatoryOutputFormat}
                                     <button onClick={() => { if(aiReportContent) { handleCopyText(aiReportContent, () => showToast("已複製", "success")); } else showToast("無內容", "error"); }} className="flex items-center gap-1.5 text-xs font-black text-slate-700 bg-white border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors shadow-sm active:scale-95"><Copy size={14} /> 複製結果</button>
                                 </div>
                                 {/* MARKDOWN RENDERED CONTENT */}
-                            <div className="ai-report-content bg-white p-0 text-slate-800 mt-2">
-                                {renderMarkdown(aiReportContent)}
+                                <div className="ai-report-content bg-white p-0 text-slate-800 mt-2">
+                                    {renderMarkdown(aiReportContent)}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
                     </section>
                 </div>
 
                 <div className={`fixed bottom-0 left-0 right-0 p-3 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] bg-white/95 backdrop-blur-md border-t border-gray-200 z-50 no-print`}>
-                    <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+                    <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
                         
-                        {/* 整合後的 AI 指令按鈕滑動區 */}
-                        <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar flex items-center gap-2">
+                        {/* 整合後的指令按鈕 (自動換行排列，解決滑鼠操作痛苦的問題) */}
+                        <div className="w-full flex-1 flex flex-wrap justify-center md:justify-start items-center gap-2">
                             {aiButtons.map((btn, idx) => {
                                 const Icon = btn.icon;
                                 return (
                                     <button 
                                         key={idx} 
                                         onClick={() => handleCopyText(btn.prompt, () => showToast(`${btn.label}指令已複製`, "success"))} 
-                                        className={`flex-shrink-0 flex items-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-lg font-black text-xs sm:text-sm transition-colors active:scale-95 shadow-sm border ${colorStyles[btn.color]}`}
+                                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-black text-[13px] transition-colors active:scale-95 shadow-sm border ${colorStyles[btn.color]}`}
                                     >
-                                        <Icon size={16}/> <span>{btn.label}</span>
+                                        <Icon size={15}/> <span>{btn.label}</span>
                                     </button>
                                 );
                             })}
                         </div>
 
                         {/* 輸出 PDF 與 列印 */}
-                        <div className="flex gap-2 w-full md:w-auto flex-shrink-0">
+                        <div className="flex gap-2 w-full md:w-auto flex-shrink-0 justify-center">
                             <button onClick={handleExportPDF} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-black text-sm hover:bg-indigo-700 transition-all shadow-md active:scale-95">
                                 <Download size={18}/> 輸出 PDF
                             </button>
                             <button onClick={handlePrintClick} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg font-black text-sm hover:bg-slate-800 transition-all shadow-md active:scale-95">
-                                <Printer size={18}/> 列印報告
+                                <Printer size={18}/> 列印
                             </button>
                         </div>
                     </div>
