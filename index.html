@@ -128,7 +128,7 @@
             ArrowRight, Brain, Target, ListOrdered, Plus, X, ChevronUp, ChevronDown, 
             Calendar, Clock, Briefcase, Lock, PieChart, Activity, Compass, BookOpen, 
             Edit3, Eye, Layers, FileText, HelpCircle, FilePlus, Info, RefreshCw,
-            Users, TrendingUp, List, Clipboard, Zap, ShieldAlert, Fingerprint, LogOut, Download, Sparkles, MessageCircle
+            Users, TrendingUp, List, Clipboard, Zap, ShieldAlert, Fingerprint, LogOut, Download, Sparkles, MessageCircle, ArrowRightCircle
         } from 'lucide-react';
 
         // --- DATA & CONSTANTS ---
@@ -214,6 +214,15 @@
             { type: "C", text: "整理檔案或資料" }, { type: "C", text: "處理文書或會計工作" }, { type: "C", text: "制定詳細的計畫表" }, { type: "C", text: "按部就班完成任務" }, { type: "C", text: "遵守規則與程序" }
         ];
 
+        const LIFE_VISION_ITEMS = [
+            "健康", "家庭", "時間", "事業",
+            "產業前景", "保證底薪", "年收入⾦額", "年收入沒有天花板",
+            "年收入有累積性 (被動收入)", "晉升", "成長", "成就感",
+            "不易被其他⼈及AI取代", "時間⾃主", "健康 & 家庭兼得",
+            "每年出國", "持續性的退休收入", "努⼒可以傳承",
+            "團隊合作", "喜歡當老⼤ (主動/提早/他人決定權)", "⼈和", "⾃我實現"
+        ];
+
         const DISC_ANIMALS = {
             D: { animal: "老虎", type: "支配型", traits: "目標導向、果斷、掌控", desc: "天生的領導者，決策迅速，但可能缺乏耐心。重視結果與效率。" },
             I: { animal: "孔雀", type: "影響型", traits: "樂觀、熱情、社交", desc: "團隊的氣氛製造者，善於溝通，但可能忽略細節。重視人際關係與認同。" },
@@ -241,7 +250,7 @@
             E: { name: "企業型 (Enterprising)", desc: "領導說服、追求成就" }, C: { name: "事務型 (Conventional)", desc: "按部就班、重視精確" }
         };
 
-        const MODULES_MAP = ['disc', 'values', 'outcomes', 'traits', 'enneagram', 'big5', 'holland'];
+        const MODULES_MAP = ['disc', 'values', 'outcomes', 'traits', 'enneagram', 'big5', 'holland', 'lifeVision'];
 
         // --- DEMO REALISTIC DATA ---
         const DEMO_CANDIDATE = { name: '林宇翔', dob: '1996-08-15' };
@@ -265,10 +274,11 @@
             traits: ["我有野心", "我有信心", "我熱情", "我能和別人溝通", "我有說服力", "我追求目標", "我會採取主動", "我很堅定", "我的精力充沛", "我能盡責任", "我是可靠的"],
             enneagram: { "1": 3, "2": 4, "3": 8, "4": 2, "5": 2, "6": 3, "7": 5, "8": 6, "9": 2 },
             big5: { E: 12, A: 8, C: 11, N: 4, O: 10 },
-            holland: { R: 1, I: 2, A: 2, S: 4, E: 5, C: 1 }
+            holland: { R: 1, I: 2, A: 2, S: 4, E: 5, C: 1 },
+            lifeVision: ["年收入有累積性 (被動收入)", "持續性的退休收入", "努⼒可以傳承", "時間⾃主", "健康 & 家庭兼得"]
         };
 
-        // --- ENCODE / DECODE (標準版用) ---
+        // --- ENCODE / DECODE ---
         const compress = (data) => {
             if (!data) return data;
             if (data.modules && data.timestamp && !data.answers) {
@@ -291,6 +301,7 @@
                 if (ans.enneagram) a.e = Array.from({length: 9}, (_, i) => ans.enneagram[String(i + 1)] || 0);
                 if (ans.big5) a.b = [ans.big5.O || 0, ans.big5.C || 0, ans.big5.E || 0, ans.big5.A || 0, ans.big5.N || 0];
                 if (ans.holland) a.h = [ans.holland.R || 0, ans.holland.I || 0, ans.holland.A || 0, ans.holland.S || 0, ans.holland.E || 0, ans.holland.C || 0];
+                if (ans.lifeVision) a.l = ans.lifeVision.map(i => LIFE_VISION_ITEMS.indexOf(i));
                 const mIdx = data.config?.modules?.map((m) => MODULES_MAP.indexOf(m)) || [];
                 return { v: 2, t: 'r', d: [c, a, mIdx, data.completedAt] };
             }
@@ -318,6 +329,7 @@
                 if (a.e) { answers.enneagram = {}; a.e.forEach((val, i) => answers.enneagram[String(i + 1)] = val); }
                 if (a.b) answers.big5 = { O: a.b[0], C: a.b[1], E: a.b[2], A: a.b[3], N: a.b[4] };
                 if (a.h) answers.holland = { R: a.h[0], I: a.h[1], A: a.h[2], S: a.h[3], E: a.h[4], C: a.h[5] };
+                if (a.l) answers.lifeVision = a.l.map(i => LIFE_VISION_ITEMS[i]).filter(Boolean);
                 return { candidate, config, answers, completedAt };
             }
             return data;
@@ -350,7 +362,6 @@
             } catch (err) { if (onError) onError(); }
         };
 
-        // 全域列印函數
         const handleSafePrint = (setToast, candidateName) => {
             const printContent = document.getElementById('report-container');
             if (!printContent) return;
@@ -444,6 +455,37 @@
                     </div>
                 ))}
                 <button onClick={() => { const scores = { D: 0, I: 0, S: 0, C: 0 }; Object.values(responses).forEach(v => scores[v] = (scores[v] || 0) + 1); onFinish(scores); }} disabled={!isComplete} className="w-full btn-prominent mt-8 py-4 text-lg">{isLastStep ? "完成測驗" : "下一步"}</button>
+                </div>
+            );
+        }
+
+        // 新增：生涯願景模組 (Life Vision)
+        function LifeVisionModule({ onFinish, isLastStep, isCampusMode }) {
+            const [selections, setSelections] = useState([]);
+
+            const toggleSelection = (item) => {
+                if (selections.includes(item)) {
+                    setSelections(selections.filter(i => i !== item));
+                } else {
+                    setSelections([...selections, item]);
+                }
+            };
+
+            return (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 text-indigo-900 font-bold text-sm">
+                        請從以下列表中，勾選出您期許自己 <span className="bg-indigo-200 px-1 rounded text-black">「10 年後能擁有」</span> 的生活樣貌。
+                        <div className="mt-1 text-indigo-700 text-xs">(請精挑細選出對您而言 <strong>最重要</strong> 的項目)</div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {LIFE_VISION_ITEMS.map(item => (
+                            <div key={item} onClick={() => toggleSelection(item)} className={`p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all flex items-center justify-between ${isCampusMode && 'active:scale-[0.98]'} ${selections.includes(item) ? 'border-indigo-600 bg-indigo-50 shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                                <span className={`font-extrabold text-sm sm:text-base ${selections.includes(item) ? 'text-indigo-900' : 'text-slate-600'}`}>{item}</span>
+                                {selections.includes(item) && <CheckCircle size={18} className="text-indigo-600 shrink-0 ml-2" />}
+                            </div>
+                        ))}
+                    </div>
+                    <button disabled={selections.length === 0} onClick={() => onFinish(selections)} className="w-full btn-prominent mt-6 py-4 text-lg">{isLastStep ? "完成測驗" : "下一步"}</button>
                 </div>
             );
         }
@@ -647,7 +689,7 @@
         }
 
         function QuizConfigurator({ showToast, onGenerate }) {
-            const [modules, setModules] = useState({ disc: true, values: true, outcomes: true, traits: true, enneagram: true, big5: true, holland: true });
+            const [modules, setModules] = useState({ disc: true, values: true, outcomes: true, traits: true, enneagram: true, big5: true, holland: true, lifeVision: true });
             const [code, setCode] = useState('');
 
             const generate = () => {
@@ -663,7 +705,7 @@
                 <div className="bg-white p-8 rounded-lg shadow-md border border-gray-200 animate-fade-in max-w-2xl mx-auto">
                 <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-slate-800"><Settings className="text-slate-700"/> 建立測驗配置 (遠端標準版)</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    {[{ id: 'disc', label: 'DISC 性格測驗', sub: '10題完整版' }, { id: 'values', label: '工作價值觀', sub: '7項定義 + 21題二選一' }, { id: 'outcomes', label: 'Outcomes 驅動力', sub: '12項價值排序' }, { id: 'traits', label: '成功特質檢核', sub: '35項特質掃描' }, { id: 'enneagram', label: '九型人格', sub: '18題快速版' }, { id: 'big5', label: '大五人格', sub: 'TIPI 10題版' }, { id: 'holland', label: '職業興趣 RIASEC', sub: '30項興趣檢核' }].map(m => (
+                    {[{ id: 'disc', label: 'DISC 性格測驗', sub: '10題完整版' }, { id: 'values', label: '工作價值觀', sub: '7項定義 + 21題二選一' }, { id: 'outcomes', label: 'Outcomes 驅動力', sub: '12項價值排序' }, { id: 'traits', label: '成功特質檢核', sub: '35項特質掃描' }, { id: 'enneagram', label: '九型人格', sub: '18題快速版' }, { id: 'big5', label: '大五人格', sub: 'TIPI 10題版' }, { id: 'holland', label: '職業興趣 RIASEC', sub: '30項興趣檢核' }, { id: 'lifeVision', label: '生涯願景', sub: '10年後的生活期許與目標' }].map(m => (
                     <div key={m.id} onClick={() => setModules({...modules, [m.id]: !modules[m.id]})} className={`p-3 border rounded-lg cursor-pointer transition-all flex justify-between items-center ${modules[m.id] ? 'border-slate-800 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
                         <div><div className={`font-extrabold text-sm ${modules[m.id] ? 'text-slate-900' : 'text-slate-500'}`}>{m.label}</div><div className="text-[11px] font-bold text-slate-400">{m.sub}</div></div>
                         {modules[m.id] && <CheckCircle size={18} className="text-slate-800" />}
@@ -706,7 +748,7 @@
                 <div className="mb-6 pb-4 border-b border-gray-100 flex justify-between items-end">
                     <div>
                     <span className="text-slate-600 font-black bg-gray-100 px-3 py-1 rounded-full text-[11px] tracking-wider">STEP {step + 1} / {config.modules.length}</span>
-                    <h2 className="text-2xl font-black text-slate-900 mt-3 uppercase tracking-tight">{moduleKey}</h2>
+                    <h2 className="text-2xl font-black text-slate-900 mt-3 uppercase tracking-tight">{moduleKey === 'lifeVision' ? 'Life Vision' : moduleKey}</h2>
                     </div>
                     <div className="text-right text-[11px] font-bold text-slate-400">受測者：{candidateInfo.name}</div>
                 </div>
@@ -717,6 +759,7 @@
                 {moduleKey === 'enneagram' && <EnneagramModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
                 {moduleKey === 'big5' && <BigFiveModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
                 {moduleKey === 'holland' && <HollandModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
+                {moduleKey === 'lifeVision' && <LifeVisionModule onFinish={handleModuleFinish} isLastStep={isLastStep} isCampusMode={isCampusMode} />}
                 </Wrapper>
             );
         }
@@ -788,11 +831,11 @@
 5. 九型人格: ${JSON.stringify(answers.enneagram || {})}
 6. 大五人格: ${JSON.stringify(answers.big5 || {})}
 7. Holland: ${JSON.stringify(answers.holland || {})}
+8. 生涯願景 (Life Vision): ${answers.lifeVision ? `10年後期望擁有: [${answers.lifeVision.join(', ')}]` : 'N/A'}
 `.trim();
 
             const mandatoryOutputFormat = `## 輸出格式 (Markdown)\n⚠️ 非常重要：請務必將您產出的「整份最終報告內容」完全包裝在一個純文字程式碼區塊中 (也就是在開頭加上 \`\`\`text ，在結尾加上 \`\`\`)。請依照以下結構輸出：`;
 
-            // 加入強制拔除廢話的絕對禁令
             const negativePrompt = `\n\n⚠️ 絕對禁止：不要有任何開場白、問候語或自我介紹（例如「你好，我是...」），請直接從「1. [標題]」開始輸出內容。`;
 
             const getSummaryPrompt = () => `
@@ -824,7 +867,7 @@ ${mandatoryOutputFormat}
             const getCombinedAgentPrompt = () => `
 # 專業保險業務潛能評估報告
 角色: 頂尖且極度嚴格的保險業主管。任務: 犀利剖析 ${candidateInfo.name} 是否真的能成為高績效保險業務員。
-請「完全且僅能」基於下方測驗數據分析，拒絕說好聽話，給我最真實、最血淋淋的評價。
+請「完全且僅能」基於下方測驗數據分析，拒絕說好聽話，給我最真實、最血淋淋的評價。特別注意他的「10年後生涯願景」。
 ## 數據
 ${isCampusMode ? `- 系統預判可信度: ${reliabilityResults?.status}\n` : ''}${candidateDataStr}
 ${mandatoryOutputFormat}
@@ -833,7 +876,7 @@ ${mandatoryOutputFormat}
 3. **[真實抗挫力評估]**: 面對「連續 50 次陌生開發被拒絕」時，他真實的心理承受度與復原期。
 4. **[MDRT 潛質]**: 評估其抗壓性、陌生連結力與高度自律性。
 5. **[陣亡危機與激勵解藥]**: 他最容易在什麼情境下陣亡（流失）？主管必須掐住他什麼樣的慾望才能逼出業績？
-6. **[一擊必殺增員戰術]**: 針對他的性格痛點，給出能讓他無法拒絕的增員說服話術。
+6. **[一擊必殺增員戰術]**: 針對他的性格痛點與10年後的願景，給出能讓他無法拒絕的增員說服話術。
 7. **[黃金 90 天輔導重點]**: 前三個月如何讓他存活並建立信心。${negativePrompt}
 `.trim();
 
@@ -844,7 +887,7 @@ ${mandatoryOutputFormat}
 ## 數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
-請強制尋找「數據衝突」或「性格矛盾點」（例如高I但低D，或是看重金錢但偏S型），並以此為切入點設計問題。
+請強制尋找「數據衝突」或「性格矛盾點」（例如高I但低D，或是看重金錢但偏S型，或是性格特質與10年後願景矛盾），並以此為切入點設計問題。
 請列出 3~5 個「尖銳且具針對性的面試問題」，並附上面試官該如何評估對方回答的「觀察重點」。${negativePrompt}
 `.trim();
 
@@ -857,7 +900,7 @@ ${candidateDataStr}
 ${mandatoryOutputFormat}
 1. **[溝通地雷]**: 絕對不能對他說什麼話？（請依據 DISC 與九型人格具體說明）
 2. **[績效復甦指南]**: 當他業績低迷、陷入低潮時，主管應該用什麼方式（如畫大餅、陪同作業、給予獨處空間等）來拉他一把？
-3. **[日常驅動策略]**: 如何在日常管理中持續點燃他的 Outcomes 核心驅動力？${negativePrompt}
+3. **[日常驅動策略]**: 如何在日常管理中持續點燃他的 Outcomes 核心驅動力與未來的 10 年生涯願景？${negativePrompt}
 `.trim();
 
             const getReliabilityPrompt = () => `
@@ -892,11 +935,10 @@ ${mandatoryOutputFormat}
 ${candidateDataStr}
 ${mandatoryOutputFormat}
 1. **[被埋沒的業務天賦]**: 性格亮點。
-2. **[為何不該只做助理]**: 發展限制。
+2. **[為何不該只做助理]**: 發展限制（結合他 10 年後的願景）。
 3. **[推坑轉型劇本]**: 開場、安撫恐懼、願景描繪。${negativePrompt}
 `.trim();
 
-            // 將所有按鈕收斂為「資料驅動」的陣列，方便未來擴充與管理
             const aiButtons = [
                 { label: '測驗簡介報告', icon: Sparkles, color: 'amber', prompt: getSummaryPrompt(), show: true },
                 { label: '業務潛能分析', icon: Briefcase, color: 'indigo', prompt: getCombinedAgentPrompt(), show: true },
@@ -908,7 +950,6 @@ ${mandatoryOutputFormat}
                 { label: '真實性分析', icon: Activity, color: 'rose', prompt: getReliabilityPrompt(), show: isCampusMode }
             ].filter(btn => btn.show);
 
-            // Tailwind CSS 動態色彩對照表，確保樣式能被正確編譯
             const colorStyles = {
                 amber: 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100',
                 indigo: 'bg-indigo-50 border-indigo-200 text-indigo-800 hover:bg-indigo-100',
@@ -1145,6 +1186,21 @@ ${mandatoryOutputFormat}
                             </div>
                         </section>
                         )}
+                        
+                        {/* 渲染生涯願景區塊 */}
+                        {answers.lifeVision && (
+                        <section className="card break-inside-avoid">
+                            <h3 className="text-lg font-black text-slate-800 border-l-4 border-indigo-600 pl-2.5 mb-3 bg-indigo-50 py-1 rounded-r-md">8. 10 年後生涯願景</h3>
+                            <div className="p-4 bg-white border-2 border-indigo-100 rounded-xl shadow-sm relative">
+                                <div className="text-indigo-800 font-black mb-3 flex items-center gap-2"><Sparkles size={18} /> 期望擁有的最重要生活樣貌</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {answers.lifeVision.map(item => (
+                                        <span key={`future-${item}`} className="bg-indigo-50 border border-indigo-200 text-indigo-900 px-2.5 py-1.5 rounded text-[11px] font-bold">{item}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        </section>
+                        )}
 
                         {isCampusMode && reliabilityResults && (
                         <section className="card break-inside-avoid no-print">
@@ -1187,7 +1243,7 @@ ${mandatoryOutputFormat}
 
                     <section className="card break-inside-avoid page-break-before">
                         <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-3">
-                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Brain size={20} className="text-slate-700"/> 8. 深度分析報告</h3>
+                            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2"><Brain size={20} className="text-slate-700"/> 深度分析報告</h3>
                             <button onClick={() => setIsEditingReport(!isEditingReport)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black transition-colors shadow-sm no-print ${isEditingReport ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}`}>
                             {isEditingReport ? <><Eye size={16}/> 預覽渲染</> : <><Edit3 size={16}/> 編輯模式</>}
                             </button>
@@ -1219,7 +1275,7 @@ ${mandatoryOutputFormat}
                 <div className={`fixed bottom-0 left-0 right-0 p-3 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] bg-white/95 backdrop-blur-md border-t border-gray-200 z-50 no-print`}>
                     <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
                         
-                        {/* 整合後的指令按鈕 (自動換行排列，解決滑鼠操作痛苦的問題) */}
+                        {/* 整合後的指令按鈕 (自動換行排列) */}
                         <div className="w-full flex-1 flex flex-wrap justify-center md:justify-start items-center gap-2">
                             {aiButtons.map((btn, idx) => {
                                 const Icon = btn.icon;
@@ -1252,7 +1308,7 @@ ${mandatoryOutputFormat}
 
         // --- CAMPUS SETUP COMPONENT ---
         function CampusSetup({ candidateInfo, setCandidateInfo, setQuizConfig, setAnswers, setQuizStartTime, setQuizDuration, setView, showToast }) {
-            const [localModules, setLocalModules] = useState({ disc: true, values: true, outcomes: true, traits: true, enneagram: true, big5: true, holland: true });
+            const [localModules, setLocalModules] = useState({ disc: true, values: true, outcomes: true, traits: true, enneagram: true, big5: true, holland: true, lifeVision: true });
             
             const handleCampusStart = () => {
                 const activeModules = Object.keys(localModules).filter(k => localModules[k]);
@@ -1290,10 +1346,10 @@ ${mandatoryOutputFormat}
                     <div className="mb-10">
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center gap-2 text-slate-800 font-black text-lg"><List size={20}/> 測驗項目</div>
-                            <button onClick={() => setLocalModules({disc: true, values: true, outcomes: true, traits: true, enneagram: true, big5: true, holland: true})} className="text-sm text-indigo-700 hover:text-indigo-900 font-black px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors active:scale-95 bg-indigo-50 border border-indigo-200">全選</button>
+                            <button onClick={() => setLocalModules({disc: true, values: true, outcomes: true, traits: true, enneagram: true, big5: true, holland: true, lifeVision: true})} className="text-sm text-indigo-700 hover:text-indigo-900 font-black px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors active:scale-95 bg-indigo-50 border border-indigo-200">全選</button>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                            {[{ id: 'disc', label: '1. DISC 行為風格', sub: '溝通與行事作風' }, { id: 'values', label: '2. 工作價值觀', sub: '找尋核心在乎事物' }, { id: 'outcomes', label: '3. Outcomes 驅動力', sub: '深層心理動機' }, { id: 'traits', label: '4. 成功特質檢核', sub: '自信與盲點掃描' }, { id: 'enneagram', label: '5. 九型人格', sub: '核心渴望與恐懼' }, { id: 'big5', label: '6. 大五人格', sub: '穩定性與盡責度' }, { id: 'holland', label: '7. Holland 職業興趣', sub: '適合的任務型態' }].map(m => (
+                            {[{ id: 'disc', label: '1. DISC 行為風格', sub: '溝通與行事作風' }, { id: 'values', label: '2. 工作價值觀', sub: '找尋核心在乎事物' }, { id: 'outcomes', label: '3. Outcomes 驅動力', sub: '深層心理動機' }, { id: 'traits', label: '4. 成功特質檢核', sub: '自信與盲點掃描' }, { id: 'enneagram', label: '5. 九型人格', sub: '核心渴望與恐懼' }, { id: 'big5', label: '6. 大五人格', sub: '穩定性與盡責度' }, { id: 'holland', label: '7. Holland 職業興趣', sub: '適合的任務型態' }, { id: 'lifeVision', label: '8. 生涯願景', sub: '10年後的生活期許與目標' }].map(m => (
                             <div key={m.id} onClick={() => setLocalModules({...localModules, [m.id]: !localModules[m.id]})} className={`p-4 sm:p-5 border-2 rounded-xl cursor-pointer transition-all flex justify-between items-center select-none active:scale-95 ${localModules[m.id] ? 'border-slate-800 bg-slate-50 shadow-sm' : 'border-gray-200 hover:bg-gray-50'}`}>
                                 <div><div className={`font-black text-base sm:text-lg ${localModules[m.id] ? 'text-slate-900' : 'text-slate-500'}`}>{m.label}</div><div className="text-sm font-bold text-slate-500 mt-1">{m.sub}</div></div>
                                 <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${localModules[m.id] ? 'bg-slate-800 border-slate-800 text-white' : 'border-gray-300 bg-white text-transparent'}`}><CheckCircle size={18} fill="currentColor" className="text-slate-800"/></div>
@@ -1440,7 +1496,7 @@ ${mandatoryOutputFormat}
                         {isGodMode && (
                         <div className="w-full max-w-lg pt-6 grid grid-cols-2 gap-4 animate-fade-in">
                             <button onClick={enterCampusMode} className="col-span-2 w-full bg-indigo-700 text-white p-6 rounded-xl flex items-center justify-center gap-3 hover:bg-indigo-800 transition-all shadow-[0_8px_20px_rgb(0,0,0,0.12)] font-black text-xl tracking-wide border border-indigo-600 mb-2 active:scale-[0.98]">
-                                <Target size={28} /> 🎯 啟動「校園徵才」現場單機模式
+                                <Target size={28} /> 🎯 啟提「校園徵才」現場單機模式
                             </button>
                             <button onClick={() => setView('setup')} className="col-span-2 w-full bg-slate-800 text-white p-5 rounded-lg flex items-center justify-center gap-3 hover:bg-slate-900 transition-all shadow-md font-bold text-lg tracking-wide border border-slate-700">
                                 <Settings size={20} /> 建立新測驗代碼 (遠端發送標準版)
