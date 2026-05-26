@@ -831,7 +831,7 @@
 5. 九型人格: ${JSON.stringify(answers.enneagram || {})}
 6. 大五人格: ${JSON.stringify(answers.big5 || {})}
 7. Holland: ${JSON.stringify(answers.holland || {})}
-8. 生涯願景 (Life Vision): ${answers.lifeVision ? `10年後期望擁有: [${answers.lifeVision.join(', ')}]` : 'N/A'}
+8. 生涯願景 (Life Vision): ${answers.lifeVision ? `10年後期望: [${answers.lifeVision.join(', ')}] / 未選(可妥協): [${LIFE_VISION_ITEMS.filter(i => !answers.lifeVision.includes(i)).join(', ')}]` : 'N/A'}
 `.trim();
 
             const mandatoryOutputFormat = `## 輸出格式 (Markdown)\n⚠️ 非常重要：請務必將您產出的「整份最終報告內容」完全包裝在一個純文字程式碼區塊中 (也就是在開頭加上 \`\`\`text ，在結尾加上 \`\`\`)。請依照以下結構輸出：`;
@@ -1191,11 +1191,19 @@ ${mandatoryOutputFormat}
                         {answers.lifeVision && (
                         <section className="card break-inside-avoid">
                             <h3 className="text-lg font-black text-slate-800 border-l-4 border-indigo-600 pl-2.5 mb-3 bg-indigo-50 py-1 rounded-r-md">8. 10 年後生涯願景</h3>
-                            <div className="p-4 bg-white border-2 border-indigo-100 rounded-xl shadow-sm relative">
-                                <div className="text-indigo-800 font-black mb-3 flex items-center gap-2"><Sparkles size={18} /> 期望擁有的最重要生活樣貌</div>
+                            <div className="mb-4 p-3 bg-white border-2 border-indigo-100 rounded-xl shadow-sm">
+                                <h4 className="text-sm mb-2 font-black text-indigo-800 flex items-center gap-1.5"><Sparkles size={18} /> 期望擁有的最重要生活樣貌 ({answers.lifeVision.length})</h4>
                                 <div className="flex flex-wrap gap-2">
                                     {answers.lifeVision.map(item => (
                                         <span key={`future-${item}`} className="bg-indigo-50 border border-indigo-200 text-indigo-900 px-2.5 py-1.5 rounded text-[11px] font-bold">{item}</span>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded-xl border-2 border-slate-200">
+                                <h4 className="text-xs font-extrabold text-slate-600 mb-2 flex items-center gap-1.5"><HelpCircle size={14}/> 未選擇項目 / 潛在可妥協要素 ({LIFE_VISION_ITEMS.length - answers.lifeVision.length})</h4>
+                                <div className="flex flex-wrap gap-1.5 opacity-80">
+                                    {LIFE_VISION_ITEMS.filter(item => !answers.lifeVision.includes(item)).map(item => (
+                                        <span key={`unselected-vision-${item}`} className="px-1.5 py-1 bg-white border border-slate-300 text-slate-500 font-bold rounded text-[10px]">{item}</span>
                                     ))}
                                 </div>
                             </div>
