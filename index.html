@@ -27,6 +27,7 @@
       "imports": {
         "react": "https://esm.sh/react@18.2.0",
         "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
         "lucide-react": "https://esm.sh/lucide-react@0.294.0"
       }
     }
@@ -459,7 +460,6 @@
             );
         }
 
-        // 新增：生涯願景模組 (Life Vision)
         function LifeVisionModule({ onFinish, isLastStep, isCampusMode }) {
             const [selections, setSelections] = useState([]);
 
@@ -770,6 +770,7 @@
             const formatInline = (str) => {
                 const parts = str.split(/(\*\*.*?\*\*)/g);
                 return parts.map((part, i) => {
+                    // 修正：必須檢查星星字元，否則每個切出來的文字都會被當作粗體
                     if (part.startsWith('**') && part.endsWith('**')) {
                         return <strong key={i} className="font-black text-indigo-900 bg-indigo-50 px-1 mx-0.5 rounded border border-indigo-100">{part.slice(2, -2)}</strong>;
                     }
@@ -856,12 +857,12 @@ ${mandatoryOutputFormat}${negativePrompt}
 ## 你的測驗數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
-1. **[深層自我察覺]**: 綜合分析性格 DNA，隱藏天賦。
-2. **[職場定位]**: 適合的「工作型態」與「文化氛圍」。
-3. **[職涯方向建議]**: 
-   - 請務必列出 **5 到 7 個**最適合的具體職業或領域。
-   - **推薦原因分析**：針對每一個職業，請「具體說明」是基於哪些測驗數據得出的結論（例如：「因為 DISC 的 D 型偏高，且 Outcomes 看重『獨立』與『金錢』，所以推薦此職業...」），請務必將客觀數據指標與職業特性做深度連結。
-4. **[成長備忘錄]**: 心理障礙克服與原子習慣建議。${negativePrompt}
+1. [深層自我察覺]: 綜合分析性格 DNA，隱藏天賦。
+2. [職場定位]: 適合的「工作型態」與「文化氛圍」。
+3. [職涯方向建議]: 
+   - 請務必列出 5 到 7 個最適合的具體職業或領域。
+   - 推薦原因分析：針對每一個職業，請「具體說明」是基於哪些測驗數據得出的結論（例如：「因為 DISC 的 D 型偏高，且 Outcomes 看重『獨立』與『金錢』，所以推薦此職業...」），請務必將客觀數據指標與職業特性做深度連結。
+4. [成長備忘錄]: 心理障礙克服與原子習慣建議。${negativePrompt}
 `.trim();
 
             const getCombinedAgentPrompt = () => `
@@ -871,13 +872,13 @@ ${mandatoryOutputFormat}
 ## 數據
 ${isCampusMode ? `- 系統預判可信度: ${reliabilityResults?.status}\n` : ''}${candidateDataStr}
 ${mandatoryOutputFormat}
-1. **[一針見血：他到底適不適合做業務？]**: 請給出極度犀利的結論（如：天生戰將 / 堪用但需調教 / 炮灰體質建議放生），並用一句話點出最核心的致命傷或絕對優勢。
-2. **[銷售風格與戰力]**: 用保險業語言精準定義其開發與經營風格。
-3. **[真實抗挫力評估]**: 面對「連續 50 次陌生開發被拒絕」時，他真實的心理承受度與復原期。
-4. **[MDRT 潛質]**: 評估其抗壓性、陌生連結力與高度自律性。
-5. **[陣亡危機與激勵解藥]**: 他最容易在什麼情境下陣亡（流失）？主管必須掐住他什麼樣的慾望才能逼出業績？
-6. **[一擊必殺增員戰術]**: 針對他的性格痛點與10年後的願景，給出能讓他無法拒絕的增員說服話術。
-7. **[黃金 90 天輔導重點]**: 前三個月如何讓他存活並建立信心。${negativePrompt}
+1. [一針見血：他到底適不適合做業務？]: 請給出極度犀利的結論（如：天生戰將 / 堪用但需調教 / 炮灰體質建議放生），並用一句話點出最核心的致命傷或絕對優勢。
+2. [銷售風格與戰力]: 用保險業語言精準定義其開發與經營風格。
+3. [真實抗挫力評估]: 面對「連續 50 次陌生開發被拒絕」時，他真實的心理承受度與復原期。
+4. [MDRT 潛質]: 評估其抗壓性、陌生連結力與高度自律性。
+5. [陣亡危機與激勵解藥]: 他最容易在什麼情境下陣亡（流失）？主管必須掐住他什麼樣的慾望才能逼出業績？
+6. [一擊必殺增員戰術]: 針對他的性格痛點與10年後的願景，給出能讓他無法拒絕的增員說服話術。
+7. [黃金 90 天輔導重點]: 前三個月如何讓他存活並建立信心。${negativePrompt}
 `.trim();
 
             const getInterviewPrompt = () => `
@@ -898,9 +899,9 @@ ${mandatoryOutputFormat}
 ## 數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
-1. **[溝通地雷]**: 絕對不能對他說什麼話？（請依據 DISC 與九型人格具體說明）
-2. **[績效復甦指南]**: 當他業績低迷、陷入低潮時，主管應該用什麼方式（如畫大餅、陪同作業、給予獨處空間等）來拉他一把？
-3. **[日常驅動策略]**: 如何在日常管理中持續點燃他的 Outcomes 核心驅動力與未來的 10 年生涯願景？${negativePrompt}
+1. [溝通地雷]: 絕對不能對他說什麼話？（請依據 DISC 與九型人格具體說明）
+2. [績效復甦指南]: 當他業績低迷、陷入低潮時，主管應該用什麼方式（如畫大餅、陪同作業、給予獨處空間等）來拉他一把？
+3. [日常驅動策略]: 如何在日常管理中持續點燃他的 Outcomes 核心驅動力與未來的 10 年生涯願景？${negativePrompt}
 `.trim();
 
             const getReliabilityPrompt = () => `
@@ -911,9 +912,9 @@ ${mandatoryOutputFormat}
 - 作答時間: ${formatDuration(duration)}
 ${candidateDataStr}
 ${mandatoryOutputFormat}
-1. **[作答可信度總評]**: (高/中/低)及理由。
-2. **[數據一致性偵測]**: 邏輯衝突點。
-3. **[面試驗證建議]**: 1-2 個尖銳的面試提問。${negativePrompt}
+1. [作答可信度總評]: (高/中/低)及理由。
+2. [數據一致性偵測]: 邏輯衝突點。
+3. [面試驗證建議]: 1-2 個尖銳的面試提問。${negativePrompt}
 `.trim();
 
             const getSalesAssistantPrompt = () => `
@@ -922,10 +923,10 @@ ${mandatoryOutputFormat}
 ## 數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
-1. **[行政細心與穩定]**: 耐心與精確度。
-2. **[業務支援]**: 安撫客戶、溝通能力。
-3. **[管理適配]**: 哪種主管適合帶他。
-4. **[潛在風險]**: 抗壓與厭倦度。${negativePrompt}
+1. [行政細心與穩定]: 耐心與精確度。
+2. [業務支援]: 安撫客戶、溝通能力。
+3. [管理適配]: 哪種主管適合帶他。
+4. [潛在風險]: 抗壓與厭倦度。${negativePrompt}
 `.trim();
 
             const getAssistantToAgentPrompt = () => `
@@ -934,9 +935,9 @@ ${mandatoryOutputFormat}
 ## 數據
 ${candidateDataStr}
 ${mandatoryOutputFormat}
-1. **[被埋沒的業務天賦]**: 性格亮點。
-2. **[為何不該只做助理]**: 發展限制（結合他 10 年後的願景）。
-3. **[推坑轉型劇本]**: 開場、安撫恐懼、願景描繪。${negativePrompt}
+1. [被埋沒的業務天賦]: 性格亮點。
+2. [為何不該只做助理]: 發展限制（結合他 10 年後的願景）。
+3. [推坑轉型劇本]: 開場、安撫恐懼、願景描繪。${negativePrompt}
 `.trim();
 
             const aiButtons = [
