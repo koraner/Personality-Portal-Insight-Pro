@@ -1,0 +1,21 @@
+{
+  "version": "8.0.1",
+  "publishedSite": "https://koraner.github.io/Personality-Portal-Insight-Pro/",
+  "sourceBaselineCommit": "30592bda98ed9638b87bde05c5e827d0fae6fd4e",
+  "mode": "static-browser-local",
+  "index": {
+    "bytes": 1460684,
+    "sha256": "c06930afdab4197443ca24be6039a44c7473b3675a68b24c30dc65f5974c7a74"
+  },
+  "included": [
+    "Original eight questionnaire modules",
+    "Three experience topics",
+    "Complete specialist prompts and combined report/feedback workflow",
+    "PDF and plain-text exports",
+    "Hidden fictional demo 2222",
+    "User-chosen browser-local workspace password with no public default"
+  ],
+  "cloudPersistence": false,
+  "automaticAiCalls": false,
+  "revocableFeedbackLinks": false
+}

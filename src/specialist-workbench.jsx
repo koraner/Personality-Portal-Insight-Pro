@@ -1,0 +1,57 @@
+import React,{useEffect,useState} from 'react';
+import {HOSTED,api,copyText} from './integration.jsx';
+import {combinedPrompt,parseCombinedAnswer,SHORT_HEADINGS} from './unified-report.js';
+import {templatesFor,wrapSpecialist,makeSpecialistPack,PURPOSES} from './prompt-policy.js';
+import {approvedDemoFullReport,approvedDemoReports,approvedDemoFeedback} from './approved-demo-report.js';
+import {ReportPreview} from './report-preview.jsx';
+import {PromptBox} from './prompt-box.jsx';
+import {CrmExport} from './crm-export.jsx';
+
+const packId=p=>'FullPack'+p[0].toUpperCase()+p.slice(1);
+const blank=()=>({text:'',reviewed:false,purpose:'explore',updated:0});
+function downloadText(text,name){const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+export function SpecialistWorkbench(props){
+ const {answers,candidate,analysis,recordCode,showToast,onLoadReport,demoParts,purpose='explore',onPurposeChange}=props;
+ const demo=!!demoParts,[tab,setTab]=useState(demo?'report':'prompt'),[selected,setSelected]=useState(packId(purpose)),[reports,setReports]=useState(()=>demo?Object.fromEntries(Object.entries({FullPackExplore:approvedDemoFullReport,...approvedDemoReports}).map(([id,text])=>[id,{text,reviewed:false,purpose:'explore',updated:0}])):{}),[dirty,setDirty]=useState(false),[busy,setBusy]=useState(false),[preview,setPreview]=useState(demo),[legacy,setLegacy]=useState(''),[expanded,setExpanded]=useState(false),[loading,setLoading]=useState(HOSTED&&!!recordCode&&!demo),[loadFailed,setLoadFailed]=useState(false),[parts,setParts]=useState(demo?approvedDemoFeedback:['','','']),[record,setRecord]=useState(null),[pasted,setPasted]=useState(''),[pasteOpen,setPasteOpen]=useState(!demo);
+ const tasks=[{id:packId(purpose),label:'完整分析包（全部適用專項）',text:''},...templatesFor(purpose)];
+ const task=tasks.find(x=>x.id===selected)||tasks[0],entry=reports[task.id]||blank(),args={answers,candidate,analysis,purpose};
+ const reviewedForContext=entry.reviewed&&entry.purpose===purpose;
+ const prompt=combinedPrompt(task.id===packId(purpose)?makeSpecialistPack(args):wrapSpecialist({...args,originalPrompt:task.text}));
+ useEffect(()=>{setSelected(packId(purpose))},[purpose]);
+ useEffect(()=>{let live=true;if(HOSTED&&recordCode&&!demo){setLoading(true);setLoadFailed(false);api('results/'+encodeURIComponent(recordCode)).then(r=>{if(!live)return;let saved={};try{saved=JSON.parse(r.notes?.reports||'{}')}catch{setLoadFailed(true);showToast('已保存的專項資料格式無法讀取，請勿覆寫','error');return}setReports(saved);setLegacy(r.notes?.report||'');setParts(r.draft||['','','']);setRecord(r);setDirty(false)}).catch(e=>{if(live){setLoadFailed(true);showToast(e.message,'error')}}).finally(()=>{if(live)setLoading(false)})}else{setLoading(false);setLoadFailed(false)}return()=>{live=false}},[recordCode,demo]);
+ useEffect(()=>{onLoadReport?.(entry.text)},[task.id,entry.text]);
+ useEffect(()=>{if(!dirty||demo)return;const unload=e=>{e.preventDefault();e.returnValue=''},leave=e=>{if(!confirm('完整專項解讀尚未儲存，確定離開？')){e.preventDefault();e.stopPropagation()}};const targets=[...document.querySelectorAll('.topbar button,.brand,.studio-navigation button')].filter(el=>!el.closest('.studio-navigation')||/回工作|離開示範/.test(el.getAttribute('aria-label')||''));window.addEventListener('beforeunload',unload);targets.forEach(el=>el.addEventListener('click',leave,true));return()=>{window.removeEventListener('beforeunload',unload);targets.forEach(el=>el.removeEventListener('click',leave,true))}},[dirty,demo]);
+ function update(patch){if(loading||loadFailed)return;setReports(old=>({...old,[task.id]:{...(old[task.id]||blank()),...patch,purpose,updated:Date.now()}}));setDirty(true)}
+ async function save(){if(loading||loadFailed||busy||demo||!HOSTED||!recordCode)return;setBusy(true);try{const r=await api('results/'+encodeURIComponent(recordCode),'PATCH',{action:'save_notes',notes:{reports:JSON.stringify(reports),purpose},draft:parts});setRecord(r);setDirty(false);showToast('完整分析與精簡回饋已儲存，尚未自動開放','success')}catch(e){showToast(e.message,'error')}finally{setBusy(false)}}
+ function loadAnswer(){try{if(!pasted.trim())throw Error('請先貼上 AI 的回答。');const parsed=parseCombinedAnswer(pasted);if(parsed.report.length>40000)throw Error('完整報告超過 40,000 字，請分專項保留。');if(entry.text&&!confirm('載入會取代目前這份報告草稿及回答內的精簡回饋，確定繼續？'))return;update({text:parsed.report,reviewed:false});if(parsed.parts)setParts(parsed.parts);setPreview(true);setPasted('');setPasteOpen(false);showToast(parsed.parts?'已載入完整分析與精簡回饋，請一起核對':'已載入完整報告；未找到精簡回饋標記，既有短版保留，請自行核對或補填','success')}catch(e){showToast(e.message,'error')}}
+ async function publication(action){if(busy||demo||!HOSTED||!recordCode||action==='publish'&&(dirty||!reviewedForContext||parts.some(x=>!x.trim())))return;setBusy(true);try{const r=await api('results/'+encodeURIComponent(recordCode),'PATCH',{action,draft:parts,purpose});setRecord(r);showToast(action==='publish'?'回饋已開放':'已收回開放','success')}catch(e){showToast(e.message,'error')}finally{setBusy(false)}}
+ function editPart(i,value){setParts(old=>old.map((x,j)=>j===i?value:x));update({reviewed:false})}
+ const exportReports={...Object.fromEntries(Object.entries(reports).map(([id,r])=>[id,{...r,label:tasks.find(x=>x.id===id)?.label||id}])),...(legacy?{Legacy:{text:legacy,label:'先前未分類解讀',reviewed:false,purpose:'未分類'}}:{})};
+ const steps=[['prompt','1','複製一份提示詞'],['report','2','AI 回饋與報告']];
+ return <section className="specialist-workbench workbench-v7 workbench-v8">
+  <header className="workbench-heading"><div><p className="eyebrow">解讀工作台</p><h2>AI 解讀與回饋</h2><p>只需貼回一次 AI 回答，完整分析與精簡回饋一起核對。這裡不會自動連線。</p></div></header>
+  {loading&&<p role="status">正在讀取已保存的報告…</p>}{loadFailed&&<p role="alert">報告未能完整讀取，已暫停編輯與匯出以免覆蓋舊資料。請重新開啟此結果。</p>}<div className="workbench-settings"><label>解讀用途<select aria-label="解讀用途" disabled={busy} value={purpose} onChange={e=>onPurposeChange?.(e.target.value)}>{Object.entries(PURPOSES).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><label>分析內容<select aria-label="專項分析" disabled={busy} value={task.id} onChange={e=>setSelected(e.target.value)}>{tasks.map(x=><option key={x.id} value={x.id}>{x.label}{reports[x.id]?.text?reports[x.id].reviewed?' · 已核對':' · 有草稿':''}</option>)}</select></label></div>
+  <nav className="workbench-steps" role="tablist" aria-label="分析流程">{steps.map(([id,n,label])=><button key={id} id={'step-'+id} role="tab" aria-controls={'panel-'+id} aria-selected={tab===id} onClick={()=>setTab(id)}><span>{n}</span>{label}</button>)}</nav>
+  <div id="panel-prompt" hidden={tab!=='prompt'} role="tabpanel" aria-labelledby="step-prompt">
+   <section className="workbench-primary"><h3>先複製，再交給你慣用的 AI</h3><p>一次產出完整分析，再從全文提煉精簡回饋；問卷、三個處事問題與原專項深度全部保留。</p><PromptBox label="完整 AI 提示詞" text={prompt} showToast={showToast} filename={'personality-prompt-'+purpose+'.txt'}/><button className="step-next link" onClick={()=>{setPasteOpen(true);setTab('report')}}>貼回這一份 AI 回答 →</button></section>
+  </div>
+  <div id="panel-report" hidden={tab!=='report'} role="tabpanel" aria-labelledby="step-report">
+   <div className="combined-paste"><button className="primary" disabled={busy||loading||loadFailed} aria-expanded={pasteOpen} onClick={()=>setPasteOpen(!pasteOpen)}>貼回一份 AI 回答</button><p>完整分析與精簡回饋放在同一份回答，載入後自動分開呈現，不需再問一次 AI。</p>{pasteOpen&&<div><label>AI 完整回答<textarea aria-label="AI 完整回答" value={pasted} maxLength={46000} onChange={e=>setPasted(e.target.value)} placeholder="將外部 AI 的整份回答貼在這裡，包含最後的精簡回饋標記。"/></label><button className="primary" disabled={busy||loading||loadFailed||!pasted.trim()} onClick={loadAnswer}>載入分析與回饋</button></div>}</div>
+   <section className="workbench-editor"><div className="report-toolbar"><div><h3>完整報告</h3><span className="report-state">{entry.text?reviewedForContext?'已人工核對':'待核對草稿':'尚未貼回回答'}{demo?' · 虛構示範':''}</span></div><div className="report-view-switch"><button aria-pressed={preview} onClick={()=>setPreview(true)}>閱讀</button><button aria-pressed={!preview} onClick={()=>setPreview(false)}>貼回／編輯</button></div></div>
+    {entry.text&&entry.purpose!==purpose&&<p className="delivery-notice">用途已變更；請重新核對此報告，再提煉回饋。</p>}
+    {task.id==='Summary'&&<p className="small">此專項是約 300 字的破冰簡介；完整深度請選「完整分析包」或其他專項。</p>}
+    {preview?entry.text?<><div className={'report-reader'+(expanded?' expanded':'')} tabIndex={0} role="region" aria-label="完整報告閱讀區"><ReportPreview text={entry.text}/></div><button className="reader-expand link" aria-expanded={expanded} onClick={()=>setExpanded(!expanded)}>{expanded?'收回閱讀區':'展開整篇報告'}</button></>:<div className="report-empty"><p>完整報告會顯示在這裡。</p><button className="primary" onClick={()=>setPreview(false)}>貼上 AI 的完整回答</button></div>:<label>完整專項解讀<textarea aria-label="完整專項解讀" disabled={busy||loading||loadFailed} value={entry.text} maxLength={40000} onChange={e=>update({text:e.target.value,reviewed:false})} placeholder="貼上完整報告，可直接修改。各專項分開保留，不會被三段回饋覆蓋。"/></label>}
+
+   </section>
+   <section className="unified-feedback"><div className="row spread"><h3>給受測者的精簡回饋</h3><span className="pill">{demo?'虛構示範':record?.published?'已開放':record?.everPublished?'已收回開放':'尚未開放'}</span></div><p>從上方完整分析提煉，兩者一起核對；修改不會自動更新已開放版本。</p><div className="unified-feedback-fields">{SHORT_HEADINGS.map((h,i)=><label key={h}>{h}<textarea aria-label={h} disabled={busy||loading||loadFailed} maxLength={1200} value={parts[i]} onChange={e=>editPart(i,e.target.value)} placeholder="AI 回答載入後顯示在這裡，也可以自行修改。"/></label>)}</div>
+    <label className="review-check"><input type="checkbox" disabled={busy||loading||loadFailed||!entry.text.trim()} checked={reviewedForContext} onChange={e=>update({reviewed:e.target.checked})}/>我已核對完整分析與精簡回饋的依據及待確認事項</label>
+    <div className="report-actions"><button className="primary" disabled={busy||loading||loadFailed||demo||!HOSTED||!recordCode||!dirty} onClick={save}>儲存分析與回饋</button><button className="secondary" disabled={!entry.text.trim()} onClick={()=>downloadText('【'+task.label+'｜'+(reviewedForContext?'已人工核對':'待審閱草稿')+'】\n'+entry.text,'personality-report-'+task.id+'.txt')}>下載報告 TXT</button></div>
+    <p className="small" role="status">{demo?'示範修改僅留在本頁，不保存、不發布。':!HOSTED||!recordCode?'離線使用：請下載報告留存；關閉頁面前先保存檔案。':dirty?'有尚未儲存的修改。':'報告僅後台可見；儲存不等於對外開放。'}</p>
+    <div className="row"><button className="primary" disabled={busy||loading||loadFailed||demo||!HOSTED||!recordCode||dirty||!reviewedForContext||parts.some(x=>!x.trim())} onClick={()=>publication('publish')}>手動開放精簡回饋</button><button className="secondary" disabled={busy||demo||!HOSTED||!recordCode||!record?.published} onClick={()=>publication('withdraw')}>收回開放</button>{record?.feedbackToken&&<button className="link" onClick={()=>copyText(location.origin+location.pathname+'#feedback='+record.feedbackToken,showToast)}>複製專屬查詢連結</button>}</div><p className="small">{!reviewedForContext?'請核對完整分析與精簡回饋，勾選核對後才能開放。':dirty?'核對完成，請先儲存分析與回饋，再手動開放。':'已儲存並核對；仍需由你手動開放。'} PDF 與筆記可下載草稿，下載不等於對外開放。</p>
+   </section>
+   {!loading&&!loadFailed&&<CrmExport {...{answers,candidate,analysis,purpose,demo,recordCode,showToast}} reports={exportReports} parts={parts}/>}
+   {legacy&&<details className="workbench-legacy"><summary>先前未分類的完整解讀（保留）</summary><ReportPreview text={legacy}/><button className="secondary" disabled={busy} onClick={()=>{if(!entry.text||confirm('載入會取代目前專項的本頁草稿，確定繼續？')){update({text:legacy.slice(0,40000),reviewed:false});setPreview(false)}}}>載入目前專項審閱</button></details>}
+  </div>
+
+ </section>;
+}
